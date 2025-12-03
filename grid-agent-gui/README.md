@@ -20,19 +20,27 @@ A modern, AI-powered desktop application for managing ThreeFold Grid infrastruct
 
 ### Installing Wails
 
+You can install Wails either directly or via the root Makefile tools target:
+
 ```bash
+# Via Go
 go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+# Or from the repository root
+make install-tools
 ```
 
 ## Quick Start
 
 ### Installation
 
-The easiest way to install the Grid Agent GUI is using the provided Makefile:
+The easiest way to install the Grid Agent GUI is using the root Makefile in the repository:
 
 ```bash
+# From the repository root
+
 # Install both tfcmd and grid-agent-gui
-make install-grid-agent-with-grid-cli
+make install
 
 # Or install just the GUI (requires tfcmd to be installed separately)
 make install-grid-agent-gui
@@ -91,6 +99,11 @@ grid-agent-gui/
 Run the application in development mode with hot reload:
 
 ```bash
+# Recommended: from repository root
+make dev-gui
+
+# Or directly from this directory
+cd grid-agent-gui
 wails dev
 ```
 
@@ -101,32 +114,27 @@ This starts:
 
 ### Building from Source
 
-**For your current platform:**
+All builds are driven from the repository root using the main Makefile.
+
+**Build only the GUI for your current platform:**
+
 ```bash
-make build-grid-agent-with-grid-cli
+make build-grid-agent-gui
 ```
 
-**For specific platforms:**
+**Build GUI for all supported platforms (requires appropriate OS/tooling):**
+
 ```bash
-# Linux
-make build-grid-agent-gui-linux
-
-# macOS (Intel)
-make build-grid-agent-gui-darwin
-
-# macOS (Apple Silicon)
-make build-grid-agent-gui-darwin-arm64
-
-# Windows
-make build-grid-agent-gui-windows
+make build-gui-all
 ```
 
-**Build for all platforms:**
+**Build all components (CLI + GUI) for all platforms:**
+
 ```bash
-make build-grid-agent-with-grid-cli-all-platforms
+make build-all-platforms
 ```
 
-Binaries will be output to `build/grid-agent/<os>-<arch>/`
+Binaries will be output to the `dist/` directory in the repository root.
 
 ### Frontend Development
 
