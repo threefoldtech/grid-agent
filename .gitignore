@@ -1,0 +1,30 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+build/bin/
+# Test binary, built with `go test -c`
+*.test
+# Output of the go coverage tool
+*.out
+# Go workspace file
+go.work.sum
+# Dependency directories
+vendor/
+# IDE directories
+.vscode/
+.idea/
+# Build artifacts
+dist/
+build/
+# Wails build artifacts
+frontend/dist/
+frontend/node_modules/
+grid-agent-gui/grid-agent-gui
+*.zip
+# OS files
+.DS_Store
+Thumbs.db
