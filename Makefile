@@ -300,8 +300,11 @@ ifeq ($(HOST_OS),Darwin)
 	@cd $(GUI_DIR) && \
 		echo "  Building darwin/amd64..."; \
 		PATH="$(GO_BIN):$$PATH" wails build -platform darwin/amd64 -tags webkit2_41 -o ../../../$(DIST_DIR)/grid-agent-gui-darwin-amd64; \
+		cp -r build/bin/grid-agent-gui.app ../dist/grid-agent-gui-darwin-amd64.app
+	@cd $(GUI_DIR) && \
 		echo "  Building darwin/arm64..."; \
-		PATH="$(GO_BIN):$$PATH" wails build -platform darwin/arm64 -tags webkit2_41 -o ../../../$(DIST_DIR)/grid-agent-gui-darwin-arm64
+		PATH="$(GO_BIN):$$PATH" wails build -platform darwin/arm64 -tags webkit2_41 -o ../../../$(DIST_DIR)/grid-agent-gui-darwin-arm64; \
+		cp -r build/bin/grid-agent-gui.app ../dist/grid-agent-gui-darwin-arm64.app
 endif
 ifeq ($(HOST_OS),Linux)
 		echo "  Building linux/amd64..."; \

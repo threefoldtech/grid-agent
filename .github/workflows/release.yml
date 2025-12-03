@@ -54,11 +54,7 @@ jobs:
           # Linux amd64
           echo "Building tfcmd for linux/amd64..."
           GOOS=linux GOARCH=amd64 go build -ldflags "$LDFLAGS" -o ../dist/tfcmd-linux-amd64 .
-          
-          # Linux arm64
-          echo "Building tfcmd for linux/arm64..."
-          GOOS=linux GOARCH=arm64 go build -ldflags "$LDFLAGS" -o ../dist/tfcmd-linux-arm64 .
-          
+                    
           # Windows amd64
           echo "Building tfcmd for windows/amd64..."
           GOOS=windows GOARCH=amd64 go build -ldflags "$LDFLAGS" -o ../dist/tfcmd-windows-amd64.exe .
@@ -117,13 +113,20 @@ jobs:
       - name: Build grid-agent-gui for macOS
         working-directory: ./grid-agent-gui
         run: |
+          # Ensure expected bin directory exists for Wails
+          mkdir -p build/bin
+
           # macOS amd64
           echo "Building grid-agent-gui for darwin/amd64..."
           wails build -platform darwin/amd64 -tags webkit2_41 -o ../../../dist/grid-agent-gui-darwin-amd64
+          # Archive the .app bundle to avoid uploading internal files individually
+          zip -r ../dist/grid-agent-gui-darwin-amd64.app.zip build/bin/grid-agent-gui.app
           
           # macOS arm64
           echo "Building grid-agent-gui for darwin/arm64..."
           wails build -platform darwin/arm64 -tags webkit2_41 -o ../../../dist/grid-agent-gui-darwin-arm64
+          # Archive the .app bundle for arm64 as well
+          zip -r ../dist/grid-agent-gui-darwin-arm64.app.zip build/bin/grid-agent-gui.app
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
@@ -140,7 +143,7 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          path: dist
           pattern: 'binaries-*'
           merge-multiple: true
 
@@ -148,9 +151,9 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref }}
+          tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           files: |
-            artifacts/*
+            dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
