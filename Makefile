@@ -1,9 +1,12 @@
 .PHONY: all build test clean install help
-.PHONY: build-agent build-grid-cli build-grid-agent-gui
+.PHONY: build-agent build-grid-cli build-grid-agent-gui build-grid-agent-gui-dev
 .PHONY: install-agent install-grid-cli install-grid-agent-gui
 .PHONY: test-agent test-grid-cli test-grid-agent-gui
 .PHONY: lint lint-agent lint-grid-cli lint-grid-agent-gui
-.PHONY: tidy dev-gui
+.PHONY: tidy dev-gui dev-gui-browser
+.PHONY: coverage work-sync
+.PHONY: install-deps install-tools check-deps
+.PHONY: build-cli-all build-gui-all build-all-platforms
 
 # Go parameters
 GOCMD=go
@@ -25,18 +28,16 @@ AGENT_DIR=agent
 GRID_CLI_DIR=grid-cli
 GUI_DIR=grid-agent-gui
 CLI_BIN_DIR=$(GRID_CLI_DIR)/build/bin
+DIST_DIR=dist
 
 # Detect OS for platform-specific settings
-HOST_OS := $(shell uname -s 2>/dev/null || echo "Windows")
+HOST_OS := $(shell uname -s 2>/dev/null)
 
 # Install paths (platform-specific)
 ifeq ($(HOST_OS),Darwin)
     INSTALL_PREFIX=/usr/local
 else ifeq ($(HOST_OS),Linux)
     INSTALL_PREFIX=$(HOME)/.local
-else
-    # Windows - use USERPROFILE if available
-    INSTALL_PREFIX=$(USERPROFILE)
 endif
 
 INSTALL_BIN=$(INSTALL_PREFIX)/bin
@@ -83,7 +84,7 @@ build-grid-agent-gui: ## Build grid-agent-gui (Wails application)
 
 build-grid-agent-gui-dev: ## Build grid-agent-gui in development mode
 	@echo "$(CYAN)Building grid-agent-gui (dev mode)...$(NC)"
-	@cd $(GUI_DIR) && wails build -dev
+	@cd $(GUI_DIR) && wails build -debug -tags webkit2_41
 	@echo "$(GREEN)✓ Grid Agent GUI built successfully (dev mode)$(NC)"
 
 #########################
@@ -173,7 +174,11 @@ lint-grid-agent-gui: ## Lint grid-agent-gui
 
 dev-gui: ## Run grid-agent-gui in development mode with hot reload
 	@echo "$(CYAN)Starting grid-agent-gui in dev mode...$(NC)"
-	@cd $(GUI_DIR) && wails dev
+	@cd $(GUI_DIR) && wails dev -tags webkit2_41
+
+dev-gui-browser: ## Run grid-agent-gui in development mode with hot reload in the browser
+	@echo "$(CYAN)Starting grid-agent-gui in dev mode...$(NC)"
+	@cd $(GUI_DIR) && wails dev -browser -tags webkit2_41
 
 tidy: ## Tidy all go.mod files
 	@echo "$(CYAN)Tidying all modules...$(NC)"
@@ -208,6 +213,7 @@ clean: ## Clean build artifacts
 	@rm -rf coverage
 	@rm -rf $(GUI_DIR)/build/bin
 	@rm -f $(GUI_DIR)/grid-agent-gui
+	@rm -rf $(DIST_DIR)
 	@echo "$(GREEN)✓ Clean complete$(NC)"
 
 #########################
@@ -244,18 +250,61 @@ endif
 
 install-tools: ## Install development tools
 	@echo "$(CYAN)Installing development tools...$(NC)"
-	@echo "Installing Wails..."
-	@$(GOINSTALL) github.com/wailsapp/wails/v2/cmd/wails@latest
+	@echo "Installing Wails v2.11.0..."
+	@$(GOINSTALL) github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
 	@echo "Installing golangci-lint..."
 	@$(GOINSTALL) github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	@echo "$(GREEN)✓ Development tools installed$(NC)"
 
 check-deps: ## Check if required dependencies are installed
 	@echo "$(CYAN)Checking dependencies...$(NC)"
-	@command -v go >/dev/null 2>&1 || { echo "$(YELLOW)✗ Go is not installed$(NC)"; exit 1; }
+	@command -v go > /dev/null 2>&1 || { echo "$(YELLOW)✗ Go is not installed$(NC)"; exit 1; }
 	@echo "$(GREEN)✓ Go $(shell go version)$(NC)"
-	@command -v wails >/dev/null 2>&1 || { echo "$(YELLOW)✗ Wails is not installed. Run 'make install-tools'$(NC)"; exit 1; }
+	@command -v wails > /dev/null 2>&1 || { echo "$(YELLOW)✗ Wails is not installed. Run 'make install-tools'$(NC)"; exit 1; }
 	@echo "$(GREEN)✓ Wails $(shell wails version)$(NC)"
-	@command -v node >/dev/null 2>&1 || { echo "$(YELLOW)✗ Node.js is not installed$(NC)"; exit 1; }
+	@command -v node > /dev/null 2>&1 || { echo "$(YELLOW)✗ Node.js is not installed$(NC)"; exit 1; }
 	@echo "$(GREEN)✓ Node.js $(shell node --version)$(NC)"
 	@echo "$(GREEN)All dependencies are installed!$(NC)"
+
+#########################
+# Cross-Compilation Targets
+#########################
+
+build-cli-all: ## Build CLI for all platforms
+	@echo "$(CYAN)Building CLI for all platforms...$(NC)"
+	@mkdir -p $(DIST_DIR)
+	@cd $(GRID_CLI_DIR) && \
+		LDFLAGS="-X github.com/threefoldtech/grid-agent/grid-cli/cmd.commit=$(COMMIT) \
+		         -X github.com/threefoldtech/grid-agent/grid-cli/cmd.version=$(VERSION) \
+		         -X github.com/threefoldtech/grid-agent/grid-cli/cmd.date=$(BUILD_DATE)"; \
+		echo "  Building linux/amd64..."; \
+		GOOS=linux GOARCH=amd64 go build -ldflags "$$LDFLAGS" -o ../$(DIST_DIR)/tfcmd-linux-amd64 .; \
+		echo "  Building windows/amd64..."; \
+		GOOS=windows GOARCH=amd64 go build -ldflags "$$LDFLAGS" -o ../$(DIST_DIR)/tfcmd-windows-amd64.exe .; \
+		echo "  Building darwin/amd64..."; \
+		GOOS=darwin GOARCH=amd64 go build -ldflags "$$LDFLAGS" -o ../$(DIST_DIR)/tfcmd-darwin-amd64 .; \
+		echo "  Building darwin/arm64..."; \
+		GOOS=darwin GOARCH=arm64 go build -ldflags "$$LDFLAGS" -o ../$(DIST_DIR)/tfcmd-darwin-arm64 .
+	@echo "$(GREEN)✓ CLI built for all platforms → $(DIST_DIR)/$(NC)"
+
+build-gui-all: ## Build GUI for all platforms (requires appropriate OS)
+	@echo "$(CYAN)Building GUI for all platforms...$(NC)"
+	@mkdir -p $(DIST_DIR)
+	@cd $(GUI_DIR) && \
+		echo "  Building linux/amd64..."; \
+		wails build -platform linux/amd64 -tags webkit2_41 -o ../../../$(DIST_DIR)/grid-agent-gui-linux-amd64; \
+		echo "  Building windows/amd64..."; \
+		wails build -platform windows/amd64 -tags webkit2_41 -o ../../../$(DIST_DIR)/grid-agent-gui-windows-amd64.exe
+ifeq ($(HOST_OS),Darwin)
+	@cd $(GUI_DIR) && \
+		echo "  Building darwin/amd64..."; \
+		wails build -platform darwin/amd64 -tags webkit2_41 -o ../$(DIST_DIR)/grid-agent-gui-darwin-amd64; \
+		echo "  Building darwin/arm64..."; \
+		wails build -platform darwin/arm64 -tags webkit2_41 -o ../$(DIST_DIR)/grid-agent-gui-darwin-arm64
+endif
+	@echo "$(GREEN)✓ GUI built for available platforms → $(DIST_DIR)/$(NC)"
+
+build-all-platforms: build-cli-all build-gui-all ## Build all binaries for all platforms
+	@echo "$(GREEN)✓ All binaries built successfully$(NC)"
+	@echo "$(CYAN)Binaries available in $(DIST_DIR)/:$(NC)"
+	@ls -lh $(DIST_DIR)/
