@@ -1,9 +1,9 @@
 .PHONY: all build test clean install help
 .PHONY: build-agent build-grid-cli build-grid-agent-gui
-.PHONY: install-agent install-grid-cli install-grid-agent-gui install-all
-.PHONY: test-agent test-grid-cli test-grid-agent-gui test-all
+.PHONY: install-agent install-grid-cli install-grid-agent-gui
+.PHONY: test-agent test-grid-cli test-grid-agent-gui
 .PHONY: lint lint-agent lint-grid-cli lint-grid-agent-gui
-.PHONY: tidy tidy-all dev-gui
+.PHONY: tidy dev-gui
 
 # Go parameters
 GOCMD=go
@@ -12,7 +12,6 @@ GOTEST=$(GOCMD) test
 GOMOD=$(GOCMD) mod
 GOINSTALL=$(GOCMD) install
 
-# Build information
 # Build information
 VERSION := $(shell git tag --sort=-version:refname 2>/dev/null | head -n 1)
 ifeq ($(VERSION),)
@@ -91,7 +90,7 @@ build-grid-agent-gui-dev: ## Build grid-agent-gui in development mode
 # Install Targets
 #########################
 
-install: install-all ## Install all components
+install: install-grid-cli install-grid-agent-gui ## Install all components
 
 install-agent: build-agent ## Install agent package
 	@echo "$(CYAN)Installing agent...$(NC)"
@@ -130,13 +129,12 @@ Categories=Utility;Development;" > $(HOME)/.local/share/applications/grid-agent.
 endif
 	@echo "$(GREEN)✓ Grid Agent GUI installed successfully to $(INSTALL_BIN)/grid-agent-gui$(NC)"
 
-install-all: install-grid-cli install-grid-agent-gui ## Install all components
-
 #########################
 # Test Targets
 #########################
 
-test: test-all ## Run all tests
+test: test-agent test-grid-cli test-grid-agent-gui ## Run all tests
+	@echo "$(GREEN)✓ All tests passed$(NC)"
 
 test-agent: ## Test agent package
 	@echo "$(CYAN)Testing agent...$(NC)"
@@ -150,15 +148,12 @@ test-grid-agent-gui: ## Test grid-agent-gui
 	@echo "$(CYAN)Testing grid-agent-gui...$(NC)"
 	@cd $(GUI_DIR) && $(GOTEST) -v ./...
 
-test-all: ## Run tests for all components
-	@echo "$(CYAN)Running all tests...$(NC)"
-	@$(GOTEST) -v ./...
-
 #########################
 # Lint Targets
 #########################
 
-lint: lint-all ## Lint all components
+lint: lint-agent lint-grid-cli lint-grid-agent-gui ## Lint all components
+	@echo "$(GREEN)✓ All components linted$(NC)"
 
 lint-agent: ## Lint agent package
 	@echo "$(CYAN)Linting agent...$(NC)"
@@ -172,10 +167,6 @@ lint-grid-agent-gui: ## Lint grid-agent-gui
 	@echo "$(CYAN)Linting grid-agent-gui...$(NC)"
 	@cd $(GUI_DIR) && golangci-lint run
 
-lint-all: ## Lint all components
-	@echo "$(CYAN)Linting all components...$(NC)"
-	@golangci-lint run ./...
-
 #########################
 # Development Targets
 #########################
@@ -184,14 +175,12 @@ dev-gui: ## Run grid-agent-gui in development mode with hot reload
 	@echo "$(CYAN)Starting grid-agent-gui in dev mode...$(NC)"
 	@cd $(GUI_DIR) && wails dev
 
-tidy: tidy-all ## Tidy all go.mod files
-
-tidy-all: ## Run go mod tidy on all modules
+tidy: ## Tidy all go.mod files
 	@echo "$(CYAN)Tidying all modules...$(NC)"
 	@cd $(AGENT_DIR) && $(GOMOD) tidy
 	@cd $(GRID_CLI_DIR) && $(GOMOD) tidy
 	@cd $(GUI_DIR) && $(GOMOD) tidy
-	@$(GOMOD) work sync
+	@$(GOCMD) work sync
 	@echo "$(GREEN)✓ All modules tidied$(NC)"
 
 #########################
