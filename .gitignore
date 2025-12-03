@@ -19,7 +19,6 @@ vendor/
 .idea/
 # Build artifacts
 dist/
-build/
 # Wails build artifacts
 frontend/dist/
 frontend/node_modules/
