@@ -107,7 +107,7 @@ func (a *App) SaveSettings(mnemonics, network, apiKey string) error {
 	}
 
 	// Set Gemini API key environment variable
-	os.Setenv("GEMINI_API_KEY", apiKey)
+	_ = os.Setenv("GEMINI_API_KEY", apiKey)
 
 	// Run tfcmd login
 	if err := a.runTfcmdLogin(); err != nil {
@@ -140,7 +140,7 @@ func (a *App) Logout() error {
 
 	// Clear agent
 	if a.agent != nil {
-		a.agent.Close()
+		_ = a.agent.Close()
 		a.agent = nil
 	}
 
@@ -413,7 +413,7 @@ func (a *App) loadSettings() {
 
 	// If configured, initialize services
 	if a.settings.IsConfigured {
-		os.Setenv("GEMINI_API_KEY", a.settings.GeminiAPIKey)
+		_ = os.Setenv("GEMINI_API_KEY", a.settings.GeminiAPIKey)
 		if err := a.initializeAgent(); err != nil {
 			log.Printf("Failed to initialize agent: %v", err)
 		}
@@ -469,7 +469,9 @@ func (a *App) runTfcmdLogin() error {
 	errChan := make(chan error, 1)
 
 	go func() {
-		defer stdin.Close()
+		defer func() {
+			_ = stdin.Close()
+		}()
 		// Write mnemonics and network to stdin
 		if _, err := io.WriteString(stdin, a.settings.Mnemonics+"\n"); err != nil {
 			errChan <- fmt.Errorf("failed to write mnemonics to stdin: %w", err)
