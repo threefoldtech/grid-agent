@@ -24,6 +24,7 @@ The **Grid Agent** repository provides a complete suite of tools for intelligent
 A standalone, reusable AI agent framework for building intelligent conversational assistants.
 
 **Key Features:**
+
 - LLM provider abstraction (Google Gemini, extensible to OpenAI, etc.)
 - Extensible tool system for CLI integration
 - Real-time streaming command execution
@@ -41,6 +42,7 @@ A standalone, reusable AI agent framework for building intelligent conversationa
 A modern, cross-platform desktop application providing a chat interface to interact with the ThreeFold Grid using natural language.
 
 **Key Features:**
+
 - AI-powered chat interface with Google Gemini
 - Beautiful dark/light theme support
 - Secure onboarding flow
@@ -58,6 +60,7 @@ A modern, cross-platform desktop application providing a chat interface to inter
 Command-line interface for ThreeFold Grid operations, providing the foundation for agent schema generation.
 
 **Key Features:**
+
 - Deploy and manage VMs, Kubernetes clusters, databases
 - Gateway management (FQDN, Name)
 - Contract operations
@@ -71,14 +74,74 @@ Command-line interface for ThreeFold Grid operations, providing the foundation f
 
 ## Quick Start
 
-### Prerequisites
+You have two options to start using Grid Agent:
+
+1. **Download prebuilt binaries** (simplest)
+2. **Build and install from source** (for development)
+
+### 1. Download prebuilt binaries
+
+Prebuilt binaries for the latest tagged version are available on GitHub Releases:
+
+- <https://github.com/threefoldtech/grid-agent/releases/latest>
+
+#### Linux
+
+1. Download the latest `tfcmd-linux-amd64` and `grid-agent-gui-linux-amd64`.
+2. Make the binaries executable and move them into your local bin directory:
+
+    ```bash
+    chmod +x tfcmd-linux-amd64
+    mv tfcmd-linux-amd64 ~/.local/bin/tfcmd
+
+    chmod +x grid-agent-gui-linux-amd64
+    mv grid-agent-gui-linux-amd64 ~/.local/bin/grid-agent-gui
+    ```
+
+3. Ensure `~/.local/bin` is in your `PATH`.
+
+#### macOS
+
+1. Download the appropriate CLI and GUI artifacts for your architecture (`amd64` or `arm64`).
+2. Install the CLI:
+
+    ```bash
+    chmod +x tfcmd-darwin-*
+    sudo mv tfcmd-darwin-amd64 /usr/local/bin/tfcmd   # Intel (amd64)
+    # or
+    sudo mv tfcmd-darwin-arm64 /usr/local/bin/tfcmd   # Apple Silicon (arm64)
+    ```
+
+3. For the GUI, download the `.app.zip` for your architecture and extract it (Finder: double-click, or `unzip` from the terminal). This will produce `grid-agent-gui.app`.
+
+    ```bash
+    mv grid-agent-gui.app /Applications/ThreeFold\ Grid\ Agent.app
+    ```
+
+4. Launch from Spotlight or Finder. If macOS blocks it as an "unidentified developer" or "App is damaged and can't be opened", allow it under **System Settings → Privacy & Security**.
+
+#### Windows
+
+1. Download `tfcmd-windows-amd64.exe` and `grid-agent-gui-windows-amd64.exe`.
+2. Optionally rename and add the CLI to your `PATH`:
+
+    ```powershell
+    Rename-Item .\tfcmd-windows-amd64.exe tfcmd.exe
+    # Then add its directory to the PATH environment variable
+    ```
+
+3. Run `grid-agent-gui-windows-amd64.exe` to start the GUI.
+
+### 2. Build and install from source
+
+#### Prerequisites
 
 - **Go** 1.23 or higher
 - **Node.js** 18 or higher (for GUI)
 - **Wails CLI** v2.11.0+ (for GUI development)
 - **System Dependencies** (Linux only): Run `make install-deps`
 
-### Installation
+#### Installation from source
 
 Install all components with a single command:
 
@@ -97,6 +160,7 @@ make install-grid-agent-gui
 ```
 
 This will install binaries to:
+
 - **Linux:** `~/.local/bin`
 - **macOS:** `/usr/local/bin`
 
@@ -115,11 +179,12 @@ grid-agent-gui
 ```
 
 On first launch, you'll be guided through:
+
 1. Entering your mnemonic phrase
 2. Selecting a network (mainnet/testnet/devnet)
 3. Providing a Gemini API key
 
-Get a free Gemini API key at: https://aistudio.google.com/app/apikey
+Get a free Gemini API key at: <https://aistudio.google.com/app/apikey>
 
 ---
 
@@ -196,9 +261,10 @@ wails dev
 ```
 
 This starts:
+
 - Vite dev server with hot reload
 - Go backend
-- Dev server at http://localhost:34115
+- Dev server at <http://localhost:34115>
 
 ---
 
@@ -465,6 +531,5 @@ For issues and questions:
 - [tfgrid-sdk-go](https://github.com/threefoldtech/tfgrid-sdk-go) - ThreeFold Grid SDK for Go (original monorepo)
 - [ThreeFold Grid Proxy](https://github.com/threefoldtech/tfgrid-sdk-go/tree/development/grid-proxy) - Grid indexer and query service
 - [ThreeFold Manual](https://manual.grid.tf) - Comprehensive Grid documentation
-
 
 <parameter name="Complexity">7
