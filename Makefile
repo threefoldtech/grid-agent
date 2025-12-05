@@ -82,12 +82,12 @@ build-grid-cli: ## Build grid-cli (tfcmd)
 
 build-grid-agent-gui: ## Build grid-agent-gui (Wails application)
 	@echo "$(CYAN)Building grid-agent-gui...$(NC)"
-	@cd $(GUI_DIR) && PATH="$(GO_BIN):$$PATH" wails build -tags webkit2_41
+	@cd $(GUI_DIR) && PATH="$(GO_BIN):$$PATH" wails build -tags webkit2_41 -ldflags "-X main.Version=$(VERSION)"
 	@echo "$(GREEN)✓ Grid Agent GUI built successfully$(NC)"
 
 build-grid-agent-gui-dev: ## Build grid-agent-gui in development mode
 	@echo "$(CYAN)Building grid-agent-gui (dev mode)...$(NC)"
-	@cd $(GUI_DIR) && wails build -debug -tags webkit2_41
+	@cd $(GUI_DIR) && wails build -debug -tags webkit2_41 -ldflags "-X main.Version=$(VERSION)"
 	@echo "$(GREEN)✓ Grid Agent GUI built successfully (dev mode)$(NC)"
 
 #########################
@@ -177,11 +177,11 @@ lint-grid-agent-gui: ## Lint grid-agent-gui
 
 dev-gui: ## Run grid-agent-gui in development mode with hot reload
 	@echo "$(CYAN)Starting grid-agent-gui in dev mode...$(NC)"
-	@cd $(GUI_DIR) && PATH="$(GO_BIN):$$PATH" wails dev -tags webkit2_41
+	@cd $(GUI_DIR) && PATH="$(GO_BIN):$$PATH" wails dev -tags webkit2_41 -ldflags "-X main.Version=$(VERSION)"
 
 dev-gui-browser: ## Run grid-agent-gui in development mode with hot reload in the browser
 	@echo "$(CYAN)Starting grid-agent-gui in dev mode...$(NC)"
-	@cd $(GUI_DIR) && PATH="$(GO_BIN):$$PATH" wails dev -browser -tags webkit2_41
+	@cd $(GUI_DIR) && PATH="$(GO_BIN):$$PATH" wails dev -browser -tags webkit2_41 -ldflags "-X main.Version=$(VERSION)"
 
 tidy: ## Tidy all go.mod files
 	@echo "$(CYAN)Tidying all modules...$(NC)"
@@ -295,20 +295,20 @@ build-gui-all: ## Build GUI for all platforms (requires appropriate OS)
 	@mkdir -p $(DIST_DIR)
 	@cd $(GUI_DIR) && \
 		echo "  Building windows/amd64..."; \
-		PATH="$(GO_BIN):$$PATH" wails build -platform windows/amd64 -tags webkit2_41 -o ../../../$(DIST_DIR)/grid-agent-gui-windows-amd64.exe
+		PATH="$(GO_BIN):$$PATH" wails build -platform windows/amd64 -tags webkit2_41 -ldflags "-X main.Version=$(VERSION)" -o ../../../$(DIST_DIR)/grid-agent-gui-windows-amd64.exe
 ifeq ($(HOST_OS),Darwin)
 	@cd $(GUI_DIR) && \
 		echo "  Building darwin/amd64..."; \
-		PATH="$(GO_BIN):$$PATH" wails build -platform darwin/amd64 -tags webkit2_41 -o ../../../$(DIST_DIR)/grid-agent-gui-darwin-amd64; \
+		PATH="$(GO_BIN):$$PATH" wails build -platform darwin/amd64 -tags webkit2_41 -ldflags "-X main.Version=$(VERSION)" -o ../../../$(DIST_DIR)/grid-agent-gui-darwin-amd64; \
 		cp -r build/bin/grid-agent-gui.app ../dist/grid-agent-gui-darwin-amd64.app
 	@cd $(GUI_DIR) && \
 		echo "  Building darwin/arm64..."; \
-		PATH="$(GO_BIN):$$PATH" wails build -platform darwin/arm64 -tags webkit2_41 -o ../../../$(DIST_DIR)/grid-agent-gui-darwin-arm64; \
+		PATH="$(GO_BIN):$$PATH" wails build -platform darwin/arm64 -tags webkit2_41 -ldflags "-X main.Version=$(VERSION)" -o ../../../$(DIST_DIR)/grid-agent-gui-darwin-arm64; \
 		cp -r build/bin/grid-agent-gui.app ../dist/grid-agent-gui-darwin-arm64.app
 endif
 ifeq ($(HOST_OS),Linux)
 		echo "  Building linux/amd64..."; \
-		PATH="$(GO_BIN):$$PATH" wails build -platform linux/amd64 -tags webkit2_41 -o ../../../$(DIST_DIR)/grid-agent-gui-linux-amd64
+		PATH="$(GO_BIN):$$PATH" wails build -platform linux/amd64 -tags webkit2_41 -ldflags "-X main.Version=$(VERSION)" -o ../../../$(DIST_DIR)/grid-agent-gui-linux-amd64
 endif
 	@echo "$(GREEN)✓ GUI built for available platforms → $(DIST_DIR)/$(NC)"
 

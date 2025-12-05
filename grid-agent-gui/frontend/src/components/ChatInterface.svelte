@@ -4,13 +4,14 @@
     SendMessage,
     Logout,
     AbortWorkflow,
+    CheckForUpdates,
   } from "../../wailsjs/go/main/App.js";
-  import { EventsOn } from "../../wailsjs/runtime/runtime.js";
+  import { EventsOn, BrowserOpenURL } from "../../wailsjs/runtime/runtime.js";
   import { messagesStore, settingsStore } from "../stores/stores";
   import ChatMessage from "./ChatMessage.svelte";
   import Settings from "./Settings.svelte";
   import { GenerateSummary, ExportChat } from "../../wailsjs/go/main/App.js";
-  import { fade } from "svelte/transition";
+  import { fade, fly } from "svelte/transition";
   import tfLogo from "../assets/images/tf-logo.png";
   import AnsiToHtml from "ansi-to-html";
 
@@ -26,6 +27,18 @@
   let showSettings = false;
   let errorMessage = "";
   let isExporting = false;
+
+  // Update notification state
+  let showUpdateBanner = false;
+  let updateInfo: { latestVersion: string; releaseURL: string } | null = null;
+  let isOpeningLink = false;
+
+  function openUpdateLink() {
+    if (isOpeningLink || !updateInfo) return;
+    isOpeningLink = true;
+    BrowserOpenURL(updateInfo.releaseURL);
+    setTimeout(() => (isOpeningLink = false), 2000);
+  }
 
   // ANSI to HTML converter
   const ansiConverter = new AnsiToHtml({
@@ -246,6 +259,21 @@
   onMount(() => {
     console.log("[DEBUG] Setting up event listeners");
 
+    // Check for updates on startup
+    CheckForUpdates()
+      .then((info) => {
+        if (info.updateAvailable) {
+          updateInfo = {
+            latestVersion: info.latestVersion,
+            releaseURL: info.releaseURL,
+          };
+          showUpdateBanner = true;
+        }
+      })
+      .catch((err) => {
+        console.log("Failed to check for updates:", err);
+      });
+
     // Listen for real-time command output
     EventsOn(
       "command-output",
@@ -368,6 +396,79 @@
       <img src={tfLogo} alt="ThreeFold Logo" />
       <span>Grid Agent</span>
     </div>
+
+    <!-- Update Banner -->
+    {#if showUpdateBanner && updateInfo}
+      <div class="update-banner" transition:fly={{ y: -20, duration: 400 }}>
+        <div class="banner-content">
+          <div class="icon-wrapper">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"
+              ></path>
+              <path
+                d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"
+              ></path>
+              <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path>
+              <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path>
+            </svg>
+          </div>
+          <div class="text-group">
+            <span class="banner-title">Update Available</span>
+            <span class="banner-desc"
+              >Version <strong>{updateInfo.latestVersion}</strong> is closer than
+              you think</span
+            >
+          </div>
+        </div>
+        <div class="banner-actions">
+          <button
+            class="btn-update"
+            on:click|preventDefault={openUpdateLink}
+            disabled={isOpeningLink}
+          >
+            {#if isOpeningLink}
+              Opening...
+            {:else}
+              Download Update
+            {/if}
+          </button>
+          <button
+            class="btn-dismiss"
+            on:click={() => (showUpdateBanner = false)}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              ><line x1="18" y1="6" x2="6" y2="18"></line><line
+                x1="6"
+                y1="6"
+                x2="18"
+                y2="18"
+              ></line></svg
+            >
+          </button>
+        </div>
+      </div>
+    {/if}
+
     <div class="controls">
       <button
         class="icon-btn"
@@ -730,6 +831,122 @@
     transform: translateY(-1px);
   }
 
+  .update-banner {
+    background: rgba(29, 78, 216, 0.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    margin: 1rem 1.5rem 0;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.1),
+      0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  .banner-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .icon-wrapper {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
+  }
+
+  .text-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+  }
+
+  .banner-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #93c5fd;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .banner-desc {
+    font-size: 0.95rem;
+    color: #e2e8f0;
+  }
+
+  .banner-desc strong {
+    color: white;
+    font-weight: 600;
+  }
+
+  .banner-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .btn-update {
+    background: linear-gradient(90deg, #2563eb 0%, #1d4ed8 100%);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 140px;
+  }
+
+  .btn-update:hover:not(:disabled) {
+    box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
+    background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+  }
+
+  .btn-update:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
+  }
+
+  .btn-update:disabled {
+    opacity: 0.7;
+    cursor: wait;
+    transform: none;
+  }
+
+  .btn-dismiss {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    padding: 0.4rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-dismiss:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
+
   /* Logout Modal */
   .modal-overlay {
     position: fixed;
@@ -848,5 +1065,32 @@
     to {
       transform: rotate(360deg);
     }
+  }
+
+  /* Light Theme Overrides for Update Banner */
+  :global([data-theme="light"]) .update-banner {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+  }
+
+  :global([data-theme="light"]) .banner-title {
+    color: #1e40af; /* blue-800 */
+  }
+
+  :global([data-theme="light"]) .banner-desc {
+    color: #475569; /* slate-600 */
+  }
+
+  :global([data-theme="light"]) .banner-desc strong {
+    color: #1e3a8a; /* blue-900 */
+  }
+
+  :global([data-theme="light"]) .btn-dismiss {
+    color: #64748b; /* slate-500 */
+  }
+
+  :global([data-theme="light"]) .btn-dismiss:hover {
+    color: #0f172a; /* slate-900 */
+    background: rgba(0, 0, 0, 0.05); /* slightly dark hover */
   }
 </style>

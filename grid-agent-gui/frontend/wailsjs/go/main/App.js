@@ -14,6 +14,10 @@ export function AddProfile(arg1, arg2) {
   return window['go']['main']['App']['AddProfile'](arg1, arg2);
 }
 
+export function CheckForUpdates() {
+  return window['go']['main']['App']['CheckForUpdates']();
+}
+
 export function DeactivateProfile() {
   return window['go']['main']['App']['DeactivateProfile']();
 }

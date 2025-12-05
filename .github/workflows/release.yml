@@ -70,13 +70,16 @@ jobs:
       - name: Build grid-agent-gui for Linux and Windows
         working-directory: ./grid-agent-gui
         run: |
+          # Set ldflags for GUI
+          GUI_LDFLAGS="-X main.Version=${{ github.ref_name || 'dev' }}"
+
           # Linux amd64
           echo "Building grid-agent-gui for linux/amd64..."
-          wails build -platform linux/amd64 -tags webkit2_41 -o ../../../dist/grid-agent-gui-linux-amd64
+          wails build -platform linux/amd64 -tags webkit2_41 -ldflags "$GUI_LDFLAGS" -o ../../../dist/grid-agent-gui-linux-amd64
 
           # Windows amd64
           echo "Building grid-agent-gui for windows/amd64..."
-          wails build -platform windows/amd64 -tags webkit2_41 -o ../../../dist/grid-agent-gui-windows-amd64.exe
+          wails build -platform windows/amd64 -tags webkit2_41 -ldflags "$GUI_LDFLAGS" -o ../../../dist/grid-agent-gui-windows-amd64.exe
 
       - name: Upload Linux/Windows artifacts
         uses: actions/upload-artifact@v4
@@ -113,18 +116,21 @@ jobs:
       - name: Build grid-agent-gui for macOS
         working-directory: ./grid-agent-gui
         run: |
+          # Set ldflags for GUI
+          GUI_LDFLAGS="-X main.Version=${{ github.ref_name || 'dev' }}"
+
           # Ensure expected bin directory exists for Wails
           mkdir -p build/bin
 
           # macOS amd64
           echo "Building grid-agent-gui for darwin/amd64..."
-          wails build -platform darwin/amd64 -tags webkit2_41 -o ../../../dist/grid-agent-gui-darwin-amd64
+          wails build -platform darwin/amd64 -tags webkit2_41 -ldflags "$GUI_LDFLAGS" -o ../../../dist/grid-agent-gui-darwin-amd64
           # Archive the .app bundle to avoid uploading internal files individually
           (cd build/bin && zip -r ../../../dist/grid-agent-gui-darwin-amd64.app.zip grid-agent-gui.app)
           
           # macOS arm64
           echo "Building grid-agent-gui for darwin/arm64..."
-          wails build -platform darwin/arm64 -tags webkit2_41 -o ../../../dist/grid-agent-gui-darwin-arm64
+          wails build -platform darwin/arm64 -tags webkit2_41 -ldflags "$GUI_LDFLAGS" -o ../../../dist/grid-agent-gui-darwin-arm64
           # Archive the .app bundle for arm64 as well
           (cd build/bin && zip -r ../../../dist/grid-agent-gui-darwin-arm64.app.zip grid-agent-gui.app)
 

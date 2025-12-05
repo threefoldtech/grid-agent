@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,6 +24,9 @@ import (
 	"github.com/threefoldtech/grid-agent/grid-cli/cmd"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+// Version is the current application version (set via ldflags during build)
+var Version = "dev"
 
 // App struct
 type App struct {
@@ -93,6 +97,60 @@ func (a *App) startup(ctx context.Context) {
 // GetSettings returns the current settings
 func (a *App) GetSettings() *Settings {
 	return a.settings
+}
+
+// UpdateInfo contains version update information
+type UpdateInfo struct {
+	UpdateAvailable bool   `json:"updateAvailable"`
+	CurrentVersion  string `json:"currentVersion"`
+	LatestVersion   string `json:"latestVersion"`
+	ReleaseURL      string `json:"releaseURL"`
+}
+
+// CheckForUpdates checks GitHub for a newer version
+func (a *App) CheckForUpdates() UpdateInfo {
+	result := UpdateInfo{
+		CurrentVersion: Version,
+	}
+
+	// Create HTTP client with redirect policy to capture final URL
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse // Don't follow redirects
+		},
+		Timeout: 5 * time.Second,
+	}
+
+	// Check the latest release URL (it redirects to the actual version)
+	resp, err := client.Get("https://github.com/threefoldtech/grid-agent/releases/latest")
+	if err != nil {
+		log.Printf("Failed to check for updates: %v", err)
+		return result
+	}
+	defer resp.Body.Close()
+
+	// Get the redirect location which contains the version
+	location := resp.Header.Get("Location")
+	if location == "" {
+		return result
+	}
+
+	// Extract version from URL like: https://github.com/threefoldtech/grid-agent/releases/tag/v0.2.1
+	parts := strings.Split(location, "/tag/")
+	if len(parts) != 2 {
+		return result
+	}
+
+	latestVersion := parts[1]
+	result.LatestVersion = latestVersion
+	result.ReleaseURL = location
+
+	// Compare versions (simple string comparison, assumes semantic versioning)
+	if latestVersion != Version && latestVersion > Version {
+		result.UpdateAvailable = true
+	}
+
+	return result
 }
 
 // SaveSettings saves settings and initializes services

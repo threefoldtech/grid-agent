@@ -8,6 +8,8 @@ export function ActivateProfile(arg1:string):Promise<main.Settings>;
 
 export function AddProfile(arg1:string,arg2:string):Promise<main.Settings>;
 
+export function CheckForUpdates():Promise<main.UpdateInfo>;
+
 export function DeactivateProfile():Promise<main.Settings>;
 
 export function DeleteProfile(arg1:string):Promise<main.Settings>;
