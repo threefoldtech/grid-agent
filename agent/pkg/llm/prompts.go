@@ -5,7 +5,13 @@ const JSONFormatInstructions = `
 ### RESPONSE FORMAT STANDARDS
 You must reply with a SINGLE or ARRAY of JSON objects.
 
-The tools available to you will be described in the system prompt. Use the exact format specified for each tool.
+For tool calls (when you need to use a tool):
+{
+  "toolName": "<tool_name>",
+  "arguments": <string_or_array>,
+  "explanation": "Why you need to use this tool..."
+}
+The available tools and their specific formats are described below.
 
 For questions (when you need more information):
 {

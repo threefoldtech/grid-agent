@@ -61,7 +61,24 @@ func (t *CommandTool) Description() tools.ToolDescriptor {
   "arguments": ["ls", "-la", "/tmp"],
   "explanation": "explain why you need to use this command"
 }`,
-		Instructions: `Use this tool to execute system commands. The arguments should be a list of strings representing the command and its arguments. You can execute ANY system command including file operations, SSH, kubectl, and other CLI tools. Always use appropriate commands for the operating system.`,
+		Instructions: `Use this tool to execute system commands. Arguments must be a list of strings.
+
+OS AWARENESS:
+- Always use commands appropriate for the current operating system
+- If a command fails, adapt to the OS-specific equivalent automatically
+- ~ is automatically expanded to the home directory
+- Use forward slashes (/) in paths - they are converted automatically
+
+SSH COMMANDS:
+- Always use: ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+- This prevents interactive "Host key verification" prompts
+- Example: ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@1.2.3.4 <command>
+
+CAPABILITIES:
+- File operations (ls, cat, mkdir, etc.)
+- SSH connections
+- kubectl, docker, and other CLI tools
+- Any read-only or safe system command`,
 		Examples: []string{
 			`{
   "toolName": "command",

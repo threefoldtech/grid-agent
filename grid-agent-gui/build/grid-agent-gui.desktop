@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=ThreeFold Grid Agent
+Comment=AI-powered assistant for ThreeFold Grid
+Exec=/home/sameh/Projects/tfgrid-sdk-go/grid-agent-gui/build/bin/grid-agent-gui
+Icon=/home/sameh/Projects/tfgrid-sdk-go/grid-agent-gui/build/appicon.png
+Terminal=false
+Type=Application
+Categories=Utility;Development;
+StartupWMClass=grid-agent-gui

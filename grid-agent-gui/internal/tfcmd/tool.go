@@ -65,6 +65,39 @@ func (t *Tool) Description() tools.ToolDescriptor {
 - Deploy and manage VMs, Kubernetes clusters, gateways, and ZDBs
 - Query and cancel contracts
 - All tfcmd commands are available
+
+VALIDATION RULES:
+- Check that ALL required flags are provided (look for "required": true in the schema)
+- Check that ALL required positional arguments are provided (look for "args" in the schema)
+- If any required flags or arguments are missing, ask the user first
+
+FLAG GROUPS (must be set together):
+- deploy vm: if --flist is provided, --entrypoint MUST also be provided
+
+MUTUALLY EXCLUSIVE FLAGS (only ONE can be set):
+- deploy vm: --node OR --farm (not both)
+- deploy kubernetes: --master-node OR --master-farm (not both)
+- deploy kubernetes: --workers-nodes OR --workers-farm (not both)
+- deploy gateway name: --node OR --farm (not both)
+- deploy zdb: --node OR --farm (not both)
+
+BOOLEAN FLAG SYNTAX:
+- To enable: --flag or --flag=true
+- To disable: --flag=false (MUST use = sign)
+- WRONG: --mycelium false
+- CORRECT: --mycelium=false
+
+SSH KEYS IN ENV VARS:
+- Some flists require SSH key as ENV VAR (e.g., SSH_KEY, pub_key)
+- This is DIFFERENT from --ssh flag (which takes a file path)
+- For ENV VAR: pass the actual key CONTENT, not the file path
+- First read the key file, then use: --env SSH_KEY="ssh-rsa AAA..."
+
+CANCEL/DELETE:
+- By name: tfcmd cancel <deployment-name> (preferred for single deployments)
+- By contract: tfcmd cancel contracts <contract-id>
+- Cancel all: tfcmd cancel contracts -a (REQUIRES explicit user confirmation!)
+
 %s`, schemaJSON),
 		Examples: []string{
 			`{
