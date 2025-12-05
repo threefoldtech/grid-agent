@@ -9,13 +9,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/threefoldtech/grid-agent/agent/pkg/core"
 	"github.com/threefoldtech/grid-agent/agent/pkg/llm"
+	"github.com/threefoldtech/grid-agent/agent/pkg/tools"
 	"github.com/threefoldtech/grid-agent/agent/pkg/tools/builtin"
 	"github.com/threefoldtech/grid-agent/agent/pkg/workflow"
 	internalConfig "github.com/threefoldtech/grid-agent/grid-agent-gui/internal/config"
@@ -53,11 +53,12 @@ type Profile struct {
 
 // Step represents a single step in the agent's workflow
 type Step struct {
-	Type      string `json:"type"`      // "command", "url_fetch", "analysis"
-	CommandID string `json:"commandID"` // Unique ID for command steps
-	Content   string `json:"content"`   // Command or URL
-	Output    string `json:"output"`    // Command output or fetched content
-	Error     string `json:"error"`     // Error message if any
+	ProgressText string `json:"progressText"` // Visual title with emoji: "⚡ Command Executed"
+	ExportPrefix string `json:"exportPrefix"` // Export prefix: "Command:", "URL:"
+	CommandID    string `json:"commandID"`    // Unique ID for command steps
+	Content      string `json:"content"`      // Command or URL
+	Output       string `json:"output"`       // Command output or fetched content
+	Error        string `json:"error"`        // Error message if any
 }
 
 // Message represents a chat message for the frontend
@@ -162,35 +163,40 @@ func (g *GUIMessageCollector) emitEvent(step Step) {
 	})
 }
 
-func (g *GUIMessageCollector) OnCommand(commandID, explanation, command string, isStreaming bool) {
-	// For streaming commands, create step but don't set initial output
-	// Let the real-time events populate the actual content
-	var initialOutput string
-	if !isStreaming {
-		initialOutput = "Executing..."
-	}
+func (g *GUIMessageCollector) OnToolExecution(toolCallID, toolName, progressText, exportPrefix, displayArgs string, isStreaming bool) {
+	var needsCommandID bool
+
+	// Set needsCommandID based on whether it's streaming
+	needsCommandID = isStreaming
 
 	step := Step{
-		Type:      "command",
-		CommandID: commandID,
-		Content:   command,
-		Output:    initialOutput,
+		ProgressText: progressText,
+		ExportPrefix: exportPrefix,
+		Content:      displayArgs,
+		Output:       "",
 	}
+
+	if needsCommandID {
+		step.CommandID = toolCallID
+	}
+
 	g.steps = append(g.steps, step)
 	g.emitEvent(step)
 }
 
-func (g *GUIMessageCollector) UpdateCommandOutput(commandID, command, output string, err error) {
-	// Find the command step by commandID and update its output
+func (g *GUIMessageCollector) UpdateToolOutput(toolCallID, output string, err error) {
+	// Find the tool step by toolCallID and update its output
 	for i := len(g.steps) - 1; i >= 0; i-- {
-		if g.steps[i].Type == "command" && g.steps[i].CommandID == commandID {
+		step := &g.steps[i]
+		// Check if this step has a CommandID that matches, or if it's a tool execution step
+		if step.CommandID == toolCallID {
 			if err != nil {
-				g.steps[i].Output = output
-				g.steps[i].Error = err.Error()
+				step.Output = output
+				step.Error = err.Error()
 			} else {
-				g.steps[i].Output = output
+				step.Output = output
 			}
-			g.emitEvent(g.steps[i])
+			g.emitEvent(*step)
 			break
 		}
 	}
@@ -198,51 +204,6 @@ func (g *GUIMessageCollector) UpdateCommandOutput(commandID, command, output str
 
 func (g *GUIMessageCollector) OnAnalyzing() {
 	// Optional: emit analysis event
-}
-
-func (g *GUIMessageCollector) OnFetchURL(reason, url string) {
-	// Truncate content for display to avoid lagging the UI
-	// Note: The actual content is not passed here in the new interface,
-	// but if we were to pass it, we should truncate it.
-	// The current agent interface only passes reason and url for OnFetchURL.
-	// The output comes later in the tool execution result.
-	// Wait, the previous implementation had 'content' in OnFetchURL?
-	// Let's check the original app.go again...
-	// Original: func (g *GUIMessageCollector) CollectURLFetch(url string, content string)
-	// New Interface: func (h ResponseHandler) OnFetchURL(reason, url string)
-
-	// The new interface separates "Starting to fetch" (OnFetchURL) from "Tool Output" (which comes via OnCommand/OnAnalyzing or just in the loop).
-	// In the new processor loop, I call:
-	// p.handler.OnFetchURL("Fetching URL...", urlStr)
-	// Then execute tool.
-	// Then: p.handler.OnCommand("Executing command...", cmdStr) <-- Wait, for URL tool, I should probably have a way to report output.
-
-	// In processor.go:
-	// if toolCall.ToolName == "command" { p.handler.OnCommand(...) }
-	// else if toolCall.ToolName == "fetch_url" { p.handler.OnFetchURL(...) }
-	// ... execute ...
-	// feedback = "Tool output: ..."
-	// p.handler.OnAnalyzing() (only for command?)
-
-	// The new processor doesn't explicitly report "Tool Output" to the handler for URL fetches,
-	// except maybe via OnCommand if I reused it, or OnAnalyzing.
-	// The original app had CollectURLFetch(url, content).
-
-	// I should probably update the processor to pass the output to the handler,
-	// or update the handler to accept output.
-	// But I can't change the interface easily without breaking other things.
-
-	// For now, I will just emit the "Fetching..." step.
-	// The actual content will be fed back to the LLM.
-	// If I want to show it in the UI, I need to capture the tool output.
-
-	step := Step{
-		Type:    "url_fetch",
-		Content: url,
-		Output:  "Fetching...",
-	}
-	g.steps = append(g.steps, step)
-	g.emitEvent(step)
 }
 
 func (g *GUIMessageCollector) OnAnswer(answer string) error {
@@ -263,14 +224,15 @@ func (g *GUIMessageCollector) OnAnswer(answer string) error {
 
 	// Add as a step if it's not already there
 	step := Step{
-		Type:    "answer",
-		Content: answer,
+		ProgressText: "💡 Answer",
+		ExportPrefix: "",
+		Content:      answer,
 	}
 
 	// Check if we already have this exact answer in steps
 	found := false
 	for _, s := range g.steps {
-		if s.Type == "answer" && s.Content == answer {
+		if s.ProgressText == "💡 Answer" && s.Content == answer {
 			found = true
 			break
 		}
@@ -297,8 +259,9 @@ func (g *GUIMessageCollector) OnQuestion(question string) error {
 
 	// Also emit as a step for consistency
 	step := Step{
-		Type:    "question",
-		Content: question,
+		ProgressText: "❓ Question",
+		ExportPrefix: "",
+		Content:      question,
 	}
 	g.steps = append(g.steps, step)
 	g.emitEvent(step)
@@ -308,8 +271,9 @@ func (g *GUIMessageCollector) OnQuestion(question string) error {
 
 func (g *GUIMessageCollector) OnError(message string) {
 	step := Step{
-		Type:  "error",
-		Error: message,
+		ProgressText: "❌ Error",
+		ExportPrefix: "",
+		Error:        message,
 	}
 	if len(g.steps) > 0 {
 		g.steps[len(g.steps)-1].Error = message
@@ -323,8 +287,9 @@ func (g *GUIMessageCollector) OnError(message string) {
 
 func (g *GUIMessageCollector) OnExplanation(text string) {
 	step := Step{
-		Type:    "analysis",
-		Content: text,
+		ProgressText: "📊 Analysis",
+		ExportPrefix: "",
+		Content:      text,
 	}
 	g.steps = append(g.steps, step)
 	g.emitEvent(step)
@@ -454,7 +419,7 @@ func (a *App) runTfcmdLogin() error {
 	// Actually, I can just use "tfcmd" and let the user ensure it's in PATH.
 	// But to be safe, I'll copy the find logic.
 
-	tfcmdPath, err := a.findTfcmd()
+	tfcmdPath, err := tfcmd.FindTfcmd()
 	if err != nil {
 		return fmt.Errorf("tfcmd not found: %w", err)
 	}
@@ -499,14 +464,6 @@ func (a *App) runTfcmdLogin() error {
 }
 
 func (a *App) initializeAgent() error {
-	// Generate schema from tfcmd commands
-	rootCmd := cmd.GetRootCmd()
-	schemaDef := tfcmd.GenerateSchema(rootCmd)
-	schemaJSON, err := json.MarshalIndent(schemaDef, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to generate schema: %w", err)
-	}
-
 	// Create streaming callback for real-time command output
 	streamCallback := func(requestID, commandID, line string) {
 		// Debug: Log what we're emitting
@@ -521,13 +478,35 @@ func (a *App) initializeAgent() error {
 		})
 	}
 
-	// Create LLM provider with Threefold-specific config
+	// Create a temporary registry to register tools before creating the agent
+	registry := tools.NewRegistry()
+
+	// Register tools
+	// 1. Built-in tools with streaming support
+	registry.Register(builtin.NewCommandToolWithStreaming(streamCallback))
+	registry.Register(builtin.NewURLTool())
+
+	// 2. Tfcmd tool with streaming
+	rootCmd := cmd.GetRootCmd()
+	registry.Register(tfcmd.NewTool(rootCmd, streamCallback))
+
+	// Generate tool documentation dynamically
+	toolDocs := registry.GeneratePromptSection()
+
+	// Get list of registered tool names for dynamic parsing
+	var toolNames []string
+	for _, tool := range registry.List() {
+		toolNames = append(toolNames, tool.Name())
+	}
+
+	// Create LLM provider with dynamic tool documentation
 	providerConfig := llm.Config{
 		ModelName:        "gemini-2.5-flash",
 		ResponseMIMEType: "application/json",
-		SystemPrompt:     strings.Replace(internalConfig.GetSystemPrompt(a.settings.Network, a.getActiveInstructions()), "SCHEMA_PLACEHOLDER", string(schemaJSON), 1),
+		SystemPrompt:     strings.Replace(internalConfig.GetSystemPrompt(a.settings.Network, a.getActiveInstructions()), "{{TOOL_DESCRIPTIONS}}", toolDocs, 1),
 		MaxRetries:       3,
 		MaxJSONRetries:   2,
+		RegisteredTools:  toolNames, // Pass tool names for dynamic parsing
 	}
 
 	provider, err := llm.NewGeminiProviderWithConfig(a.settings.GeminiAPIKey, providerConfig)
@@ -535,51 +514,13 @@ func (a *App) initializeAgent() error {
 		return err
 	}
 
-	// Create agent config
-	cfg := core.Config{
+	// Create agent ONCE with all configuration
+	a.agent = core.NewAgent(core.Config{
 		LLMProvider: provider,
-	}
-
-	// Create agent
-	a.agent = core.NewAgent(cfg)
-
-	// Register tools
-	// 1. Built-in tools with streaming support
-	a.agent.RegisterTool(builtin.NewCommandToolWithStreaming(streamCallback))
-	a.agent.RegisterTool(builtin.NewURLTool())
-
-	// 2. Tfcmd tool
-	a.agent.RegisterTool(tfcmd.NewTool(rootCmd))
+		Tools:       registry, // Use the registry we already populated
+	})
 
 	return nil
-}
-
-// findTfcmd finds the tfcmd executable
-func (a *App) findTfcmd() (string, error) {
-	// Determine executable name based on OS
-	exeName := "tfcmd"
-	if runtime.GOOS == "windows" {
-		exeName = "tfcmd.exe"
-	}
-
-	possiblePaths := []string{
-		exeName,
-		filepath.Join("..", "grid-cli", exeName),
-		filepath.Join("grid-cli", exeName),
-		filepath.Join(filepath.Dir(os.Args[0]), "..", "..", "..", "grid-cli", exeName),
-		filepath.Join(os.Getenv("HOME"), "Projects", "tfgrid-sdk-go", "grid-cli", exeName),
-	}
-
-	for _, path := range possiblePaths {
-		if p, err := exec.LookPath(path); err == nil {
-			return p, nil
-		}
-		if _, err := os.Stat(path); err == nil {
-			return filepath.Abs(path)
-		}
-	}
-
-	return "", fmt.Errorf("%s not found in PATH or common locations", exeName)
 }
 
 // getActiveInstructions returns the instructions for the active profile

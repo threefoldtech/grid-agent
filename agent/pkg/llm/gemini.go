@@ -15,10 +15,11 @@ import (
 
 // GeminiProvider implements the Provider interface for Gemini
 type GeminiProvider struct {
-	client *genai.Client
-	model  *genai.GenerativeModel
-	cs     *genai.ChatSession
-	config Config
+	client          *genai.Client
+	model           *genai.GenerativeModel
+	cs              *genai.ChatSession
+	config          Config
+	registeredTools map[string]bool
 }
 
 // NewGeminiProvider creates a new Gemini provider
@@ -58,9 +59,15 @@ func NewGeminiProviderWithConfig(apiKey string, config Config) (*GeminiProvider,
 	model.SystemInstruction = genai.NewUserContent(genai.Text(fullPrompt))
 
 	provider := &GeminiProvider{
-		client: client,
-		model:  model,
-		config: config,
+		client:          client,
+		model:           model,
+		config:          config,
+		registeredTools: make(map[string]bool),
+	}
+
+	// Populate registered tools map
+	for _, toolName := range config.RegisteredTools {
+		provider.registeredTools[toolName] = true
 	}
 
 	cs, err := provider.startChatSession()
@@ -148,16 +155,6 @@ func (p *GeminiProvider) Close() error {
 	return p.client.Close()
 }
 
-// internal struct for parsing JSON response from Gemini
-type geminiResponse struct {
-	Command     []string `json:"command,omitempty"`
-	Question    string   `json:"question,omitempty"`
-	Answer      string   `json:"answer,omitempty"`
-	Explanation string   `json:"explanation,omitempty"`
-	FetchURL    string   `json:"fetch_url,omitempty"`
-	Reason      string   `json:"reason,omitempty"`
-}
-
 // parseResponse converts Gemini response to generic Response
 func (p *GeminiProvider) parseResponse(resp *genai.GenerateContentResponse) (*Response, error) {
 	if len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
@@ -171,67 +168,74 @@ func (p *GeminiProvider) parseResponse(resp *genai.GenerateContentResponse) (*Re
 	}
 
 	// Sanitize JSON string: escape control characters that might be unescaped
-	// This handles cases where the LLM returns literal newlines inside JSON strings
 	text = sanitizeJSON(text)
 
 	// Try to parse JSON
-	// Handle case where model returns list of responses
-	var responses []geminiResponse
+	var responses []map[string]interface{}
 	if err := json.Unmarshal([]byte(text), &responses); err != nil {
 		// Try single object
-		var single geminiResponse
+		var single map[string]interface{}
 		if err2 := json.Unmarshal([]byte(text), &single); err2 != nil {
 			// Not JSON, return raw text
 			log.Printf("[DEBUG] Failed to parse JSON response. Error: %v. Raw text (first 200 chars): %s", err2, text[:min(200, len(text))])
 			return &Response{Text: text}, nil
 		}
-		responses = []geminiResponse{single}
+		responses = []map[string]interface{}{single}
 	}
 
 	// For now, we only handle the first response in the list for the generic interface
-	// Ideally we should handle all, but the generic interface expects one Response
-	// We can merge them or handle sequentially.
-	// Let's merge them into one generic Response
-
 	genericResp := &Response{}
 	var finalAnswer strings.Builder
 
 	for _, r := range responses {
-		if r.Answer != "" {
-			finalAnswer.WriteString(r.Answer + "\n")
+		if answer, ok := r["answer"].(string); ok && answer != "" {
+			finalAnswer.WriteString(answer + "\n")
 		}
-		if r.Question != "" {
-			genericResp.Question = r.Question
+		if question, ok := r["question"].(string); ok && question != "" {
+			genericResp.Question = question
 		}
-		if r.Explanation != "" {
-			// Explanation is often associated with a command, but can be treated as text
-			finalAnswer.WriteString(r.Explanation + "\n")
+		// Look for unified tool call format: toolName and arguments
+		if toolNameValue, exists := r["toolName"]; exists && toolNameValue != nil {
+			toolName, ok := toolNameValue.(string)
+			if !ok {
+				continue // Invalid toolName type
+			}
+
+			// Check if this tool is registered
+			if !p.registeredTools[toolName] {
+				continue // Tool not registered, skip
+			}
+
+			// Get arguments
+			var arguments any
+			if argsValue, exists := r["arguments"]; exists && argsValue != nil {
+				arguments = argsValue
+			} else {
+				// Default empty arguments based on tool type
+				if toolName == "tfcmd" {
+					arguments = []interface{}{}
+				} else {
+					arguments = ""
+				}
+			}
+
+			// Create tool call
+			toolCall := ToolCall{
+				ToolName:  toolName,
+				Arguments: arguments,
+			}
+
+			genericResp.ToolCalls = append(genericResp.ToolCalls, toolCall)
 		}
 
-		if len(r.Command) > 0 {
-			genericResp.ToolCalls = append(genericResp.ToolCalls, ToolCall{
-				ToolName: "command",
-				Arguments: map[string]any{
-					"command": strings.Join(r.Command, " "),
-				},
-			})
-		}
-
-		if r.FetchURL != "" {
-			genericResp.ToolCalls = append(genericResp.ToolCalls, ToolCall{
-				ToolName: "fetch_url",
-				Arguments: map[string]any{
-					"url": r.FetchURL,
-				},
-			})
+		// Handle explanation for Answer/Question/Tool
+		// We always add explanation to text so it appears as an analysis step
+		if explanation, ok := r["explanation"].(string); ok && explanation != "" {
+			finalAnswer.WriteString("\n" + explanation + "\n")
 		}
 	}
 
 	genericResp.Text = strings.TrimSpace(finalAnswer.String())
-
-	// Only fall back to raw text if JSON parsing completely failed
-	// (responses array would be empty in that case, but we already handled that above)
-
 	return genericResp, nil
 }
 

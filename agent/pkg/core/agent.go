@@ -50,3 +50,8 @@ func (a *Agent) GetTool(name string) (tools.Tool, bool) {
 func (a *Agent) RegisterTool(tool tools.Tool) {
 	a.tools.Register(tool)
 }
+
+// GetToolRegistry returns the tool registry
+func (a *Agent) GetToolRegistry() *tools.Registry {
+	return a.tools
+}

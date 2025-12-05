@@ -12,10 +12,12 @@
     timestamp: string;
     requestID?: string;
     steps?: Array<{
-      type: string;
+      progressText: string;
       content: string;
       output: string;
       error: string;
+      // Deprecated
+      type?: string;
     }>;
     // Deprecated fields (backward compatibility)
     isCommand?: boolean;
@@ -105,17 +107,7 @@
                 <div class="step-header">
                   <span class="step-number">{i + 1}</span>
                   <span class="step-type">
-                    {#if step.type === "command"}
-                      ⚡ Command Executed
-                    {:else if step.type === "url_fetch"}
-                      🌐 URL Fetched
-                    {:else if step.type === "analysis"}
-                      📊 Analysis
-                    {:else if step.type === "question"}
-                      ❓ Question
-                    {:else}
-                      🔄 Processing
-                    {/if}
+                    {step.progressText}
                   </span>
                 </div>
 
@@ -273,13 +265,6 @@
     padding-top: 0.75rem;
   }
 
-  .steps-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    justify-content: space-between;
-  }
-
   .steps-toggle {
     background: transparent;
     border: none;
@@ -295,31 +280,6 @@
 
   .steps-toggle:hover {
     color: var(--text-primary);
-  }
-
-  .abort-btn {
-    background: var(--error);
-    color: white;
-    border: none;
-    padding: 0.375rem 0.75rem;
-    border-radius: 0.375rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  .abort-btn:hover:not(:disabled) {
-    background: #dc2626;
-    transform: translateY(-1px);
-  }
-
-  .abort-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
   }
 
   .toggle-icon {

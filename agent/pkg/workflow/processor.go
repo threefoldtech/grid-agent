@@ -12,20 +12,15 @@ import (
 
 var commandCounter uint64
 
-const (
-	commandToolName = "command"
-)
-
 // ResponseHandler defines the interface for handling streaming responses
 type ResponseHandler interface {
-	OnCommand(commandID, explanation, command string, isStreaming bool)
+	OnToolExecution(toolCallID, toolName, progressText, exportPrefix, displayArgs string, isStreaming bool)
 	OnAnalyzing()
-	OnFetchURL(reason, url string)
 	OnAnswer(answer string) error
 	OnQuestion(question string) error
 	OnExplanation(text string)
 	OnError(message string)
-	UpdateCommandOutput(commandID, command, output string, err error)
+	UpdateToolOutput(toolCallID, output string, err error)
 }
 
 // Processor handles the response processing loop
@@ -90,67 +85,56 @@ func (p *Processor) processResponseLoop(ctx context.Context, resp *llm.Response)
 			}
 		}
 
-		// 2. Handle Tool Calls
+		// Handle Tool Calls
 		if len(resp.ToolCalls) > 0 {
 			for _, toolCall := range resp.ToolCalls {
-				var commandID string
-
-				// Notify handler
-				switch toolCall.ToolName {
-				case commandToolName:
-					// Generate unique command ID
-					commandID = fmt.Sprintf("cmd_%d", atomic.AddUint64(&commandCounter, 1))
-					cmdStr := fmt.Sprintf("%v", toolCall.Arguments["command"])
-
-					// Check if this is a streaming command tool
-					tool, _ := p.agent.GetTool(toolCall.ToolName)
-					isStreaming := false
-					if commandTool, ok := tool.(*builtin.CommandTool); ok && commandTool.HasStreamingCallback() {
-						isStreaming = true
-					}
-
-					p.handler.OnCommand(commandID, cmdStr, cmdStr, isStreaming)
-				case "fetch_url":
-					urlStr := fmt.Sprintf("%v", toolCall.Arguments["url"])
-					p.handler.OnFetchURL("Fetching URL...", urlStr)
-				}
+				var toolCallID string
+				var isStreaming bool
 
 				// Execute tool
 				tool, ok := p.agent.GetTool(toolCall.ToolName)
 				if !ok {
-					// Tool not found - report error to LLM
+					// Tool not found - report error
 					feedback := fmt.Sprintf("Error: Tool '%s' not found.", toolCall.ToolName)
-					var err error
-					resp, err = p.agent.SendMessage(ctx, feedback)
-					if err != nil {
-						return err
+					var sendErr error
+					resp, sendErr = p.agent.SendMessage(ctx, feedback)
+					if sendErr != nil {
+						return sendErr
 					}
 					continue
 				}
 
+				// Generate toolCallID for tracking all tool executions
+				toolCallID = fmt.Sprintf("tool_%d", atomic.AddUint64(&commandCounter, 1))
+
+				// Get tool metadata from the tool's descriptor
+				toolDesc := tool.Description()
+
+				// Check if tool supports streaming (dynamic detection)
+				if streamingTool, hasMethod := tool.(interface{ HasStreamingCallback() bool }); hasMethod {
+					isStreaming = streamingTool.HasStreamingCallback()
+				}
+
+				// Format display arguments using the tool's own method
+				displayArgs := tool.FormatDisplayArgs(toolCall.Arguments)
+
+				// Notify UI about tool execution start using unified handler
+				p.handler.OnToolExecution(toolCallID, toolCall.ToolName, toolDesc.ProgressText, toolDesc.ExportPrefix, displayArgs, isStreaming)
+
+				// Set up context with IDs
 				ctxWithID := context.WithValue(ctx, builtin.RequestIDKey, p.requestID)
-				// Also add commandID to context for streaming callback
-				if commandID != "" {
-					ctxWithID = context.WithValue(ctxWithID, builtin.CommandIDKey, commandID)
+				if isStreaming {
+					ctxWithID = context.WithValue(ctxWithID, builtin.CommandIDKey, toolCallID)
 				}
 				output, err := tool.Execute(ctxWithID, toolCall.Arguments)
 
-				// Update GUI with actual command output
-				if toolCall.ToolName == commandToolName {
-					cmdStr := fmt.Sprintf("%v", toolCall.Arguments["command"])
-
-					// Always update the handler with the final, complete output.
-					// This ensures the message returned to the frontend has the full content,
-					// preventing the real-time output from being overwritten by an empty step.
+				// Update GUI with actual tool output (unless tool opts out)
+				if !tool.SkipUpdateToolOutput() {
 					var outputStr string
 					if out, ok := output["output"]; ok {
 						outputStr = fmt.Sprintf("%v", out)
-					} else if content, ok := output["content"]; ok {
-						outputStr = fmt.Sprintf("%v", content)
-					} else {
-						outputStr = fmt.Sprintf("Command executed. Result: %v", output)
 					}
-					p.handler.UpdateCommandOutput(commandID, cmdStr, outputStr, err)
+					p.handler.UpdateToolOutput(toolCallID, outputStr, err)
 				}
 
 				// Format feedback for LLM
@@ -168,7 +152,7 @@ func (p *Processor) processResponseLoop(ctx context.Context, resp *llm.Response)
 						feedback = fmt.Sprintf("Tool executed successfully. Result: %v", output)
 					}
 
-					if toolCall.ToolName == "command" {
+					if isStreaming {
 						p.handler.OnAnalyzing()
 					}
 				}

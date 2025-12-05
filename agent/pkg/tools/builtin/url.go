@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/threefoldtech/grid-agent/agent/pkg/tools"
 )
 
 // URLTool fetches content from a URL
@@ -18,14 +20,50 @@ func (t *URLTool) Name() string {
 	return "fetch_url"
 }
 
-func (t *URLTool) Description() string {
-	return "Fetch content from a URL"
+func (t *URLTool) SkipUpdateToolOutput() bool {
+	return true // URL content is displayed differently, not as tool output
 }
 
-func (t *URLTool) Execute(ctx context.Context, args map[string]any) (map[string]any, error) {
-	url, ok := args["url"].(string)
-	if !ok {
-		return nil, fmt.Errorf("missing 'url' argument")
+func (t *URLTool) Description() tools.ToolDescriptor {
+	return tools.ToolDescriptor{
+		Name:        "fetch_url",
+		Description: "Fetch content from a URL (HTTP GET request)",
+		CallFormat: `{
+  "toolName": "fetch_url",
+  "arguments": "https://example.com/api/endpoint",
+  "explanation": "explain why you need to fetch this URL"
+}`,
+		Instructions: `Use this tool to fetch content from URLs. The arguments should be a string containing the URL to fetch. This is useful for reading API documentation, GitHub README files, and other web content.`,
+		Examples: []string{
+			`{
+  "toolName": "fetch_url",
+  "arguments": "https://hub.grid.tf/api/flist/tf-official-vms"
+}`,
+			`{
+  "toolName": "fetch_url",
+  "arguments": "https://raw.githubusercontent.com/threefoldtech/tf-images/development/tfgrid3/wordpress/README.md"
+}`,
+		},
+		ProgressText: "🌐 URL Fetched",
+		ExportPrefix: "URL:",
+	}
+}
+
+func (t *URLTool) FormatDisplayArgs(args any) string {
+	// Only support direct string
+	if url, ok := args.(string); ok {
+		return url
+	}
+	return "invalid URL format"
+}
+
+func (t *URLTool) Execute(ctx context.Context, args any) (map[string]any, error) {
+	var url string
+	var ok bool
+
+	// Only support direct string
+	if url, ok = args.(string); !ok {
+		return nil, fmt.Errorf("URL argument must be a string")
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)

@@ -9,8 +9,17 @@ import (
 func GetSystemPrompt(network string, instructions string) string {
 	basePrompt := fmt.Sprintf(`You are an intelligent agent for the tf-grid CLI running on %s.
 Your goal is to help the user interact with the CLI using natural language.
-You have access to the following CLI commands and flags:
-SCHEMA_PLACEHOLDER
+
+{{TOOL_DESCRIPTIONS}}
+
+IMPORTANT - TOOL CALL FORMAT:
+When you need to use a tool, respond with JSON using this exact format:
+{
+  "toolName": "<tool_name>",
+  "arguments": <string_or_array>
+}
+Example: {"toolName": "command", "arguments": "ls -la"}
+Example: {"toolName": "tfcmd", "arguments": ["deploy", "vm", "--name", "test"]}
 
 IMPORTANT: You can execute ANY system command if it is read-only and safe, not just tfcmd commands. This includes file operations, SSH, kubectl, and any other standard system commands.
 
@@ -22,19 +31,6 @@ If a command fails, adapt to the correct OS-specific equivalent automatically
 CRITICAL - NETWORK CONTEXT:
 You are currently operating on the '%s' network.
 - When asked about the network, confirm you are on '%s'.
-- Ensure all grid-related commands and lookups are appropriate for this network.
-
-When the user asks you to read a file, check something, or run a command, you should do it directly.
-Example: If user asks to read their SSH file, respond with:
-{
-  "command": ["<appropriate read command>", "~/.ssh/id_rsa.pub"],
-  "explanation": "I will read your SSH public key file"
-}
-Use the correct command for the operating system (cat on Unix/Mac, type on Windows)
-
-IMPORTANT - File Paths:
-- ALWAYS use ~ for the user's home directory (e.g., ~/.ssh/id_rsa.pub, ~/Documents/file.txt)
-- NEVER use hardcoded paths like /home/user/ or C:\Users\user\ - the actual username varies
 - The ~ will be automatically expanded to the correct home directory for any OS
 - Always use forward slashes (/) in paths - they will be converted to the correct separator automatically
 
@@ -154,6 +150,8 @@ If you need to look up information, you can fetch from these sources:
 - https://gridproxy.grid[.dev|.qa|.test].tf/swagger/doc.json - GridProxy API documentation
   - **Ask user to confirm the network if it wasn't explicitly stated to determine the correct GridProxy base URL (e.g., gridproxy.dev.grid.tf, gridproxy.qa.grid.tf, gridproxy.test.grid.tf, gridproxy.grid.tf). Don't make assumptions about the network.**
   - **Use the swagger schema as the source of truth for any GridProxy API request to identify the correct endpoint, required parameters, and expected response structure.**
+  - **Pagination: The API returns limited results by default. When you need complete data, use pagination parameters (page, size) to iterate through all available results until no more data is returned.**
+  - **Filtering: Always use available query filters to efficiently fetch only the data you need, reducing response size and improving performance.**
   - **Use cases: You can use GridProxy for list grid resources(nodes, farms, IP addresses), get grid stats, get twin info (including tfchain account ID), get twin general consumption and specific contract bills.
 
 IMPORTANT - Flist Priority:
@@ -171,9 +169,8 @@ For application deployments:
 
 Choose the appropriate source based on user request:
 {
-  "fetch_url": "https://hub.grid.tf/api/flist/tf-official-vms",
-  "reason": "I will lookup available Ubuntu flists",
-  "explanation": "Let me check what's available..."
+  "toolName": "fetch_url",
+  "arguments": "https://hub.grid.tf/api/flist/tf-official-vms"
 }
 I will fetch the content and provide it to you, then you can extract the needed information.
 

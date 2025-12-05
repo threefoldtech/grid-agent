@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/grid-agent/agent/pkg/tools"
+	"github.com/threefoldtech/grid-agent/agent/pkg/tools/builtin"
 )
 
 // Tool implements the agent.Tool interface for tfcmd
@@ -17,10 +18,20 @@ type Tool struct {
 }
 
 // NewTool creates a new tfcmd tool
-func NewTool(rootCmd *cobra.Command) *Tool {
+func NewTool(rootCmd *cobra.Command, callback builtin.StreamCallback) *Tool {
+	var executor *Executor
+	if callback != nil {
+		// Create streaming executor with shared command executor
+		commandExecutor := builtin.NewCommandExecutor(callback)
+		executor = NewExecutorWithStreaming(commandExecutor)
+	} else {
+		// Create non-streaming executor
+		executor = NewExecutor()
+	}
+
 	return &Tool{
 		schema:   GenerateSchema(rootCmd),
-		executor: NewExecutor(),
+		executor: executor,
 	}
 }
 
@@ -30,36 +41,94 @@ func (t *Tool) Name() string {
 	return ToolName
 }
 
-func (t *Tool) Description() string {
-	schemaJSON, _ := json.MarshalIndent(t.schema, "", "  ")
-	return fmt.Sprintf("Execute Threefold Grid commands. Available commands schema:\n%s", string(schemaJSON))
+func (t *Tool) HasStreamingCallback() bool {
+	return t.executor.isStreaming
 }
 
-func (t *Tool) Execute(ctx context.Context, args map[string]any) (map[string]any, error) {
+func (t *Tool) SkipUpdateToolOutput() bool {
+	return false
+}
+
+func (t *Tool) Description() tools.ToolDescriptor {
+	// Generate schema JSON for instructions
+	schemaJSON, _ := json.MarshalIndent(t.schema, "", "  ")
+
+	return tools.ToolDescriptor{
+		Name:        ToolName,
+		Description: "Execute ThreeFold Grid CLI commands for managing VMs, Kubernetes, gateways, and contracts",
+		CallFormat: `{
+  "toolName": "tfcmd",
+  "arguments": ["tfcmd", "deploy", "vm", "--name", "myvm"],
+  "explanation": "explain why you need to execute this command"
+}`,
+		Instructions: fmt.Sprintf(`Use this tool to interact with the ThreeFold Grid.
+- Deploy and manage VMs, Kubernetes clusters, gateways, and ZDBs
+- Query and cancel contracts
+- All tfcmd commands are available
+%s`, schemaJSON),
+		Examples: []string{
+			`{
+  "toolName": "tfcmd",
+  "arguments": ["tfcmd", "list"]
+}`,
+			`{
+  "toolName": "tfcmd",
+  "arguments": ["tfcmd", "deploy", "vm", "--name", "myvm", "--ssh", "~/.ssh/id_rsa.pub"]
+}`,
+		},
+		ProgressText: "⚡ Command Executed",
+		ExportPrefix: "Command:",
+	}
+}
+
+func (t *Tool) FormatDisplayArgs(args any) string {
+	// Only support array format
+	if cmdList, ok := args.([]interface{}); ok {
+		var parts []string
+		for _, arg := range cmdList {
+			parts = append(parts, fmt.Sprint(arg))
+		}
+		return strings.Join(parts, " ")
+	}
+	return "invalid tfcmd arguments"
+}
+
+func (t *Tool) Execute(ctx context.Context, args any) (map[string]any, error) {
 	// Parse args to build command
-	// Expecting args["command"] as string or list of strings
+	// Expecting args as list of strings
 	var cmdArgs []string
 
-	if cmdStr, ok := args["command"].(string); ok {
-		cmdArgs = strings.Fields(cmdStr)
-	} else if cmdList, ok := args["command"].([]interface{}); ok {
+	// Only support array format
+	if cmdList, ok := args.([]interface{}); ok {
 		for _, arg := range cmdList {
 			cmdArgs = append(cmdArgs, fmt.Sprint(arg))
 		}
 	} else {
-		return nil, fmt.Errorf("missing or invalid 'command' argument")
+		return nil, fmt.Errorf("arguments must be a list of strings")
 	}
 
-	output, err := t.executor.Execute(cmdArgs)
+	if len(cmdArgs) == 0 {
+		return nil, fmt.Errorf("missing or invalid arguments")
+	}
+
+	// Extract requestID and commandID from context
+	requestID, _ := ctx.Value(builtin.RequestIDKey).(string)
+	commandID, _ := ctx.Value(builtin.CommandIDKey).(string)
+
+	output, err := t.executor.Execute(ctx, cmdArgs, requestID, commandID)
 
 	result := map[string]any{
 		"output": output,
 	}
+
 	if err != nil {
+		// Check if command failed to start (not found, permission denied, etc.)
 		result["error"] = err.Error()
+		// Return error for critical failures (similar to command tool)
+		// This ensures the LLM knows the command failed
 	}
 
-	return result, nil
+	return result, err
 }
 
 // Ensure Tool implements tools.Tool

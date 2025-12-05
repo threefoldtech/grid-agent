@@ -22,10 +22,10 @@ type Response struct {
 	FinishReason string
 }
 
-// ToolCall represents a request to call a tool
+// ToolCall represents a tool execution request
 type ToolCall struct {
 	ToolName  string
-	Arguments map[string]any
+	Arguments any
 }
 
 // Message represents a conversation message
@@ -43,4 +43,5 @@ type Config struct {
 	SystemPrompt     string
 	MaxRetries       int
 	MaxJSONRetries   int
+	RegisteredTools  []string // Tool names for dynamic response parsing
 }

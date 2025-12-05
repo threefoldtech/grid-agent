@@ -60,7 +60,8 @@
       requestID: requestID,
       steps: [
         {
-          type: "thinking",
+          progressText: "🤔 Processing your request...",
+          exportPrefix: "",
           content: "Processing your request...",
           output: "",
           error: "",
@@ -97,26 +98,25 @@
       });
     } catch (error) {
       console.error("Failed to send message:", error);
-      const errorMsg = {
-        role: "agent",
-        content: "Error: " + error,
-        timestamp: new Date().toISOString(),
-        isCommand: false,
-        output: "",
-        error: error.toString(),
-        steps: [],
-      };
-      const finalErrorMsg = { ...errorMsg, requestID: requestID };
+      // Preserve existing steps and add error
       messagesStore.update((msgs) => {
-        const index = msgs.findIndex(
-          (m) => m.requestID === finalErrorMsg.requestID,
-        );
+        const index = msgs.findIndex((m) => m.requestID === requestID);
         if (index !== -1) {
-          const newMsgs = [...msgs];
-          newMsgs[index] = finalErrorMsg;
-          return newMsgs;
+          const existingMsg = msgs[index];
+          // Keep existing steps (minus placeholder), add error step
+          const steps = (existingMsg.steps || []).filter(
+            (s) => !s.progressText?.includes("🤔 Processing"),
+          );
+          steps.push({
+            progressText: "❌ Error",
+            exportPrefix: "",
+            content: "",
+            output: "",
+            error: String(error),
+          });
+          msgs[index] = { ...existingMsg, content: "Error: " + error, steps };
         }
-        return [...msgs, finalErrorMsg]; // Fallback
+        return [...msgs];
       });
     } finally {
       isSending = false;
@@ -206,14 +206,11 @@
         if (msg.steps && msg.steps.length > 0) {
           exportContent += `#### 🛠️ Workflow Steps\n\n`;
           msg.steps.forEach((step, index) => {
-            const stepType = step.type.toUpperCase();
-            exportContent += `**${index + 1}. ${stepType}**\n\n`;
+            exportContent += `**${index + 1}. ${step.progressText}**\n\n`;
 
-            // Content based on type
-            if (step.type === "command") {
-              exportContent += `Command: \`${step.content}\`\n`;
-            } else if (step.type === "url_fetch") {
-              exportContent += `URL: ${step.content}\n`;
+            // Content based on exportPrefix
+            if (step.exportPrefix) {
+              exportContent += `${step.exportPrefix} ${step.content}\n`;
             } else {
               exportContent += `${step.content}\n`;
             }
@@ -283,7 +280,7 @@
 
           // Find the command step by commandID (precise matching)
           let commandStep = targetAgentMessage.steps.find(
-            (s) => s.type === "command" && s.commandID === data.commandID,
+            (s) => s.commandID === data.commandID,
           );
 
           if (!commandStep) {
@@ -295,7 +292,7 @@
 
           // Clear any placeholder like 'thinking'
           targetAgentMessage.steps = targetAgentMessage.steps.filter(
-            (s) => s.type !== "thinking",
+            (s) => !s.progressText?.includes("🤔 Processing"),
           );
 
           const lastCommandStep = commandStep;
@@ -335,7 +332,7 @@
         if (targetAgentMessage) {
           // Clear any placeholder like 'thinking'
           targetAgentMessage.steps = targetAgentMessage.steps.filter(
-            (s) => s.type !== "thinking",
+            (s) => !s.progressText?.includes("🤔 Processing"),
           );
           if (!targetAgentMessage.steps) {
             targetAgentMessage.steps = [];
@@ -343,7 +340,9 @@
 
           // Update existing step or add new one
           const existingStepIndex = targetAgentMessage.steps.findIndex(
-            (s) => s.type === step.type && s.content === step.content,
+            (s) =>
+              s.progressText === step.progressText &&
+              s.content === step.content,
           );
 
           if (existingStepIndex >= 0) {
