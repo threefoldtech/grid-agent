@@ -69,6 +69,7 @@ func (t *Tool) Description() tools.ToolDescriptor {
 VALIDATION RULES:
 - Check that ALL required flags are provided (look for "required": true in the schema)
 - Check that ALL required positional arguments are provided (look for "args" in the schema)
+- Evaluate the 'Mutually Exclusive Flags' and 'Flag Groups' sections for the target subcommand.
 - If any required flags or arguments are missing, ask the user first
 
 FLAG GROUPS (must be set together):
