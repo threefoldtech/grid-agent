@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/threefoldtech/grid-agent/agent/pkg/tools"
 )
@@ -71,7 +72,12 @@ func (t *URLTool) Execute(ctx context.Context, args any) (map[string]any, error)
 		return nil, err
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	// Use a custom client with parameters to avoid hanging
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
