@@ -140,7 +140,12 @@ func (p *Processor) processResponseLoop(ctx context.Context, resp *llm.Response)
 				// Format feedback for LLM
 				var feedback string
 				if err != nil {
-					feedback = fmt.Sprintf("Tool '%s' failed: %v", toolCall.ToolName, err)
+					// Include output even on error - it often contains helpful details
+					if out, ok := output["output"]; ok && out != "" {
+						feedback = fmt.Sprintf("Tool '%s' failed: %v\nOutput:\n%v", toolCall.ToolName, err, out)
+					} else {
+						feedback = fmt.Sprintf("Tool '%s' failed: %v", toolCall.ToolName, err)
+					}
 					p.handler.OnError(feedback)
 				} else {
 					// Assume output has "output" or "content" key

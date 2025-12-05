@@ -125,12 +125,14 @@ func (a *App) SaveSettings(mnemonics, network, apiKey string) error {
 
 // Logout clears settings and returns to onboarding
 func (a *App) Logout() error {
-	// Keep theme preference
+	// Keep theme and profiles
 	currentTheme := a.settings.Theme
+	currentProfiles := a.settings.Profiles
 
-	// Clear all settings
+	// Clear all settings except theme and profiles
 	a.settings = &Settings{
 		Theme:        currentTheme,
+		Profiles:     currentProfiles,
 		IsConfigured: false,
 	}
 
