@@ -191,6 +191,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    min-width: 0; /* Critical for flex items to shrink/wrap correctly */
   }
 
   .bubble {
@@ -417,6 +418,9 @@
     border-radius: 0.5rem;
     overflow-x: auto;
     margin: 0.5rem 0;
+    white-space: pre-wrap; /* Wrap long lines */
+    word-break: break-all; /* Break long words */
+    overflow-wrap: anywhere; /* Ensure break anywhere if needed */
   }
 
   .markdown-body :global(code) {
