@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"syscall"
 
 	"github.com/threefoldtech/grid-agent/agent/pkg/tools/builtin"
 )
@@ -60,9 +59,6 @@ func (e *Executor) Execute(ctx context.Context, command []string, requestID, com
 	// Non-streaming execution - need to expand args here
 	args = builtin.ExpandArguments(args)
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
-	if cmd.SysProcAttr == nil {
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	}
 
 	output, err := cmd.CombinedOutput()
 	return string(output), err

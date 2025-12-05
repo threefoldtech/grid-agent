@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
-	"syscall"
 
 	"github.com/threefoldtech/grid-agent/agent/pkg/tools"
 )
@@ -141,9 +140,6 @@ func (t *CommandTool) Execute(ctx context.Context, args any) (map[string]any, er
 		// Fallback for non-streaming case - need to expand args here too
 		parts = ExpandArguments(parts)
 		cmd := exec.CommandContext(ctx, parts[0], parts[1:]...)
-		if cmd.SysProcAttr == nil {
-			cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-		}
 		var outputBytes []byte
 		outputBytes, err = cmd.CombinedOutput()
 		output = string(outputBytes)

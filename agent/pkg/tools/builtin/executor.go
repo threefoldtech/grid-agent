@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
-	"syscall"
 )
 
 // CommandExecutor provides shared command execution with streaming support
@@ -44,11 +43,6 @@ func (e *CommandExecutor) ExecuteCommand(ctx context.Context, args []string, req
 
 	// Create command with context for proper cancellation support
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
-
-	// Set up process group for better signal handling
-	if cmd.SysProcAttr == nil {
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	}
 
 	// Execute with streaming if callback is available
 	if e.streamCallback != nil {
