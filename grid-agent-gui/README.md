@@ -235,6 +235,20 @@ If the application icon doesn't appear in your launcher:
 
 2. Log out and log back in, or restart your desktop environment
 
+### macOS: App Can't Be Opened (Quarantine)
+
+If you download the application from the GitHub releases page and see a message saying the app is damaged or cannot be opened (Apple's security quarantine), you can unquarantine it using the terminal:
+
+```bash
+# Verify the attribute exists
+xattr /path/to/grid-agent-gui.app
+
+# Remove the quarantine attribute
+xattr -d com.apple.quarantine /path/to/grid-agent-gui.app
+```
+
+Replace `/path/to/grid-agent-gui.app` with the actual path to wherever you extracted or moved the application.
+
 ## Contributing
 
 Contributions are welcome! Please ensure:

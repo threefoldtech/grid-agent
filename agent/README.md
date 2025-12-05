@@ -125,6 +125,7 @@ config := llm.Config{
     SystemPrompt:     "You are a helpful assistant for managing infrastructure.",
     MaxRetries:       3,
     MaxJSONRetries:   2,
+    RegisteredTools:  []string{"command", "url_fetch"},
 }
 
 provider, err := llm.NewGeminiProviderWithConfig("your-api-key", config)
@@ -134,8 +135,7 @@ if err != nil {
 
 // Create agent with custom tool registry
 registry := tools.NewRegistry()
-registry.Register(builtin.NewCommandTool())
-registry.Register(builtin.NewURLTool())
+// ... register tools ...
 
 agent := core.NewAgent(core.Config{
     LLMProvider: provider,
@@ -260,18 +260,23 @@ agent.RegisterTool(&MyCustomTool{})
 
 ## LLM Response Format
 
-The framework expects LLM responses in structured JSON format. The LLM should return **one of the following response types** based on the action it needs to take:
+The framework expects LLM responses in a strict JSON format. The LLM must return **one of the following response types**:
 
-### Execute a Command
+### Tool Call
+
+Use this format to execute a registered tool:
 
 ```json
 {
-  "command": ["ls", "-la"],
+  "toolName": "command",
+  "arguments": ["ls", "-la"],
   "explanation": "Listing all files in the current directory"
 }
 ```
 
 ### Ask a Question
+
+Use this format when required information is missing:
 
 ```json
 {
@@ -282,6 +287,8 @@ The framework expects LLM responses in structured JSON format. The LLM should re
 
 ### Provide an Answer
 
+Use this format for the final response to the user:
+
 ```json
 {
   "answer": "Here are the files in your directory: file1.txt, file2.go, README.md",
@@ -289,35 +296,9 @@ The framework expects LLM responses in structured JSON format. The LLM should re
 }
 ```
 
-### Fetch External Data
+### Multiple Actions
 
-```json
-{
-  "fetch_url": "https://example.com/api/data",
-  "reason": "I will fetch the latest deployment information",
-  "explanation": "Retrieving data from the API"
-}
-```
-
-### Multiple Actions (Array)
-
-For multi-step workflows, the LLM can return an array of responses:
-
-```json
-[
-  {
-    "command": ["mkdir", "test"],
-    "explanation": "Creating a test directory"
-  },
-  {
-    "command": ["cd", "test"],
-    "explanation": "Navigating to the test directory"
-  },
-  {
-    "answer": "Directory created and ready to use"
-  }
-]
-```
+The framework supports receiving an array of JSON objects for multi-step workflows.
 
 ## Configuration
 
@@ -325,11 +306,14 @@ For multi-step workflows, the LLM can return an array of responses:
 
 ```go
 type Config struct {
-    ModelName        string // LLM model name (e.g., "gemini-2.5-flash")
-    ResponseMIMEType string // Response format (e.g., "application/json")
-    SystemPrompt     string // System prompt for the LLM
-    MaxRetries       int    // Maximum retry attempts for API calls
-    MaxJSONRetries   int    // Maximum retry attempts for JSON parsing
+    Provider         string   // "gemini", "openai", etc.
+    APIKey           string   // API Key
+    ModelName        string   // LLM model name (e.g., "gemini-2.5-flash")
+    ResponseMIMEType string   // Response format (e.g., "application/json")
+    SystemPrompt     string   // System prompt for the LLM
+    MaxRetries       int      // Maximum retry attempts for API calls
+    MaxJSONRetries   int      // Maximum retry attempts for JSON parsing
+    RegisteredTools  []string // List of tool names for dynamic response parsing
 }
 ```
 
@@ -364,7 +348,6 @@ The framework includes robust error handling:
 
 See the following implementations for real-world usage:
 
-- **CLI Application**: `../grid-cli/` - Command-line interface using the agent
 - **GUI Application**: `../grid-agent-gui/` - Desktop GUI built with Wails
 - **Custom Tools**: `../grid-agent-gui/internal/tfcmd/` - ThreeFold Grid command integration
 
@@ -394,21 +377,18 @@ Contributions are welcome! When contributing:
 
 ## Roadmap
 
+- [ ] stabilization
+- [ ] Add more tools for more functionality on threefold grid
 - [ ] Support for additional LLM providers (OpenAI, Anthropic, etc.)
 - [ ] Enhanced tool validation and schema generation
 - [ ] Built-in caching for LLM responses
 - [ ] Metrics and observability
 - [ ] Multi-turn conversation optimization
-- [ ] Tool composition and chaining
-
-## License
-
-This project is part of the [tfgrid-sdk-go](https://github.com/threefoldtech/tfgrid-sdk-go) repository.
 
 ## Support
 
 For issues and questions:
-- GitHub Issues: https://github.com/threefoldtech/tfgrid-sdk-go/issues
+- GitHub Issues: https://github.com/threefoldtech/grid-agent/issues
 - ThreeFold Forum: https://forum.threefold.io/
 
 ## Related Projects
