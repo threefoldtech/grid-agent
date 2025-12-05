@@ -5,10 +5,12 @@
     AddProfile,
     UpdateProfile,
     DeleteProfile,
-    ActivateProfile,
-    DeactivateProfile,
   } from "../../wailsjs/go/main/App.js";
-  import { settingsStore } from "../stores/stores";
+  import {
+    settingsStore,
+    activateProfile,
+    deactivateProfile,
+  } from "../stores/stores";
 
   const dispatch = createEventDispatcher();
 
@@ -107,13 +109,11 @@
 
   async function toggleActive(id) {
     try {
-      let newSettings;
       if (activeProfileID === id) {
-        newSettings = await DeactivateProfile();
+        await deactivateProfile();
       } else {
-        newSettings = await ActivateProfile(id);
+        await activateProfile(id);
       }
-      settingsStore.set(newSettings);
     } catch (e) {
       error = e.message;
     }

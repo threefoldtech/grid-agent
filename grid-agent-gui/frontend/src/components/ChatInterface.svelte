@@ -7,7 +7,11 @@
     CheckForUpdates,
   } from "../../wailsjs/go/main/App.js";
   import { EventsOn, BrowserOpenURL } from "../../wailsjs/runtime/runtime.js";
-  import { messagesStore, settingsStore } from "../stores/stores";
+  import {
+    messagesStore,
+    settingsStore,
+    deactivateProfile,
+  } from "../stores/stores";
   import ChatMessage from "./ChatMessage.svelte";
   import Settings from "./Settings.svelte";
   import { GenerateSummary, ExportChat } from "../../wailsjs/go/main/App.js";
@@ -38,6 +42,29 @@
     isOpeningLink = true;
     BrowserOpenURL(updateInfo.releaseURL);
     setTimeout(() => (isOpeningLink = false), 2000);
+  }
+
+  // Active Persona Logic
+  let activeProfileName = "";
+  $: {
+    const activeID = $settingsStore.activeProfileID;
+    if (activeID && $settingsStore.profiles) {
+      const p = $settingsStore.profiles.find((p) => p.id === activeID);
+      activeProfileName = p ? p.name : "";
+    } else {
+      activeProfileName = "";
+    }
+  }
+
+  async function disableActiveProfile() {
+    try {
+      await deactivateProfile();
+      // Optional: Add a toast notification here
+    } catch (err) {
+      console.error("Failed to deactivate profile:", err);
+      errorMessage = "Failed to disable persona: " + err;
+      showErrorModal = true;
+    }
   }
 
   // ANSI to HTML converter
@@ -392,9 +419,23 @@
 
 <div class="chat-interface" in:fade>
   <header>
-    <div class="logo">
-      <img src={tfLogo} alt="ThreeFold Logo" />
-      <span>Grid Agent</span>
+    <div class="logo-group">
+      <div class="logo">
+        <img src={tfLogo} alt="ThreeFold Logo" />
+        <span>Grid Agent</span>
+      </div>
+
+      {#if activeProfileName}
+        <button
+          class="persona-badge"
+          on:click={disableActiveProfile}
+          title="Disable Active Persona"
+          transition:fade={{ duration: 200 }}
+        >
+          <span class="persona-name">{activeProfileName}</span>
+          <span class="persona-close">×</span>
+        </button>
+      {/if}
     </div>
 
     <!-- Update Banner -->
@@ -666,20 +707,87 @@
   header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     padding: 1rem 1.5rem;
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border);
+    min-height: 4.8rem; /* Ensure consistent height to prevent layout shift */
+  }
+
+  /* Header Layout */
+  .logo-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
   }
 
   .logo {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    font-weight: 600;
-    font-size: 1.125rem;
+    gap: 1rem;
   }
 
+  .logo span {
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: -0.01em;
+  }
+
+  /* Active Persona Badge (Subtitle Style) */
+  .persona-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-left: 2.5rem; /* Align with text (offset icon) */
+    background: transparent;
+    border: none;
+    padding: 0;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    opacity: 0.8;
+  }
+
+  .persona-badge:hover {
+    background: transparent;
+    border: none;
+    color: var(--error);
+    opacity: 1;
+    transform: none;
+  }
+
+  .persona-name {
+    font-weight: 600;
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .persona-close {
+    font-size: 1.1em;
+    line-height: 0.8;
+    margin-left: 0.2rem;
+    opacity: 0; /* Hidden by default */
+    transform: translateX(-4px);
+    transition: all 0.2s ease;
+  }
+
+  .persona-badge:hover .persona-close {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  /* Light Theme Overrides for Persona Badge */
+  :global([data-theme="light"]) .persona-badge {
+    color: #64748b; /* Slate-500 */
+  }
+
+  :global([data-theme="light"]) .persona-badge:hover {
+    color: #ef4444; /* Red-500 */
+  }
   .logo img {
     height: 24px;
     width: auto;
