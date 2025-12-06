@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync/atomic"
 
 	"github.com/threefoldtech/grid-agent/agent/pkg/core"
@@ -72,22 +73,14 @@ func (p *Processor) processResponseLoop(ctx context.Context, resp *llm.Response)
 			return nil
 		}
 
-		// 2. Handle Text/Answer/Explanation
-		if resp.Text != "" {
-			if len(resp.ToolCalls) > 0 {
-				// Intermediate explanation - treat as analysis step
-				p.handler.OnExplanation(resp.Text)
-			} else {
-				// Final answer - accumulate
-				if err := p.handler.OnAnswer(resp.Text); err != nil {
-					return err
-				}
-			}
-		}
-
-		// Handle Tool Calls
+		// Handle Text/Answer/Explanation and Tool Calls interleaved
 		if len(resp.ToolCalls) > 0 {
 			for _, toolCall := range resp.ToolCalls {
+				// Emit explanation before executing the tool
+				if trimmed := strings.TrimSpace(toolCall.Explanation); trimmed != "" {
+					p.handler.OnExplanation(trimmed)
+				}
+
 				var toolCallID string
 				var isStreaming bool
 
@@ -170,6 +163,11 @@ func (p *Processor) processResponseLoop(ctx context.Context, resp *llm.Response)
 			}
 			// Continue loop with new response
 			continue
+		} else if resp.Text != "" {
+			// Final answer - accumulate
+			if err := p.handler.OnAnswer(resp.Text); err != nil {
+				return err
+			}
 		}
 
 		// If no tools (and text was already handled), we are done

@@ -24,8 +24,9 @@ type Response struct {
 
 // ToolCall represents a tool execution request
 type ToolCall struct {
-	ToolName  string
-	Arguments any
+	ToolName    string
+	Arguments   any
+	Explanation string
 }
 
 // Message represents a conversation message

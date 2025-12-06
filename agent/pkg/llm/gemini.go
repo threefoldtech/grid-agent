@@ -13,6 +13,15 @@ import (
 	"google.golang.org/api/option"
 )
 
+// LLMOuterResponse defines the top-level structure of LLM responses
+type LLMOuterResponse struct {
+	Answer      string      `json:"answer"`
+	Explanation string      `json:"explanation"`
+	Question    string      `json:"question"`
+	ToolName    string      `json:"toolName"`
+	Arguments   interface{} `json:"arguments"`
+}
+
 // GeminiProvider implements the Provider interface for Gemini
 type GeminiProvider struct {
 	client          *genai.Client
@@ -167,119 +176,54 @@ func (p *GeminiProvider) parseResponse(resp *genai.GenerateContentResponse) (*Re
 		}
 	}
 
-	// Sanitize JSON string: escape control characters that might be unescaped
-	text = sanitizeJSON(text)
+	// Remove sanitizeJSON call to avoid corrupting the outer JSON structure
+	// text = sanitizeJSON(text)
 
-	// Try to parse JSON
-	var responses []map[string]interface{}
-	if err := json.Unmarshal([]byte(text), &responses); err != nil {
+	// Try to parse JSON using the defined struct
+	var outerResponses []LLMOuterResponse
+	if err := json.Unmarshal([]byte(text), &outerResponses); err != nil {
 		// Try single object
-		var single map[string]interface{}
+		var single LLMOuterResponse
 		if err2 := json.Unmarshal([]byte(text), &single); err2 != nil {
 			// Not JSON, return raw text
 			log.Printf("[DEBUG] Failed to parse JSON response. Error: %v. Raw text (first 200 chars): %s", err2, text[:min(200, len(text))])
 			return &Response{Text: text}, nil
 		}
-		responses = []map[string]interface{}{single}
+		outerResponses = []LLMOuterResponse{single}
 	}
 
-	// For now, we only handle the first response in the list for the generic interface
+	// Handle all responses in the list for multiple tool calls
 	genericResp := &Response{}
 	var finalAnswer strings.Builder
 
-	for _, r := range responses {
-		if answer, ok := r["answer"].(string); ok && answer != "" {
-			finalAnswer.WriteString(answer + "\n")
+	for _, r := range outerResponses {
+		if r.Answer != "" {
+			finalAnswer.WriteString(r.Answer + "\n")
 		}
-		if question, ok := r["question"].(string); ok && question != "" {
-			genericResp.Question = question
+		if r.Question != "" {
+			genericResp.Question = r.Question
 		}
 		// Look for unified tool call format: toolName and arguments
-		if toolNameValue, exists := r["toolName"]; exists && toolNameValue != nil {
-			toolName, ok := toolNameValue.(string)
-			if !ok {
-				continue // Invalid toolName type
-			}
-
+		if r.ToolName != "" {
 			// Check if this tool is registered
-			if !p.registeredTools[toolName] {
+			if !p.registeredTools[r.ToolName] {
 				continue // Tool not registered, skip
 			}
 
-			// Get arguments
-			var arguments any
-			if argsValue, exists := r["arguments"]; exists && argsValue != nil {
-				arguments = argsValue
-			} else {
-				// Default empty arguments based on tool type
-				if toolName == "tfcmd" {
-					arguments = []interface{}{}
-				} else {
-					arguments = ""
-				}
-			}
+			// Get arguments (LLM should always provide them)
+			arguments := r.Arguments
 
-			// Create tool call
+			// Create tool call with its explanation
 			toolCall := ToolCall{
-				ToolName:  toolName,
-				Arguments: arguments,
+				ToolName:    r.ToolName,
+				Arguments:   arguments,
+				Explanation: r.Explanation,
 			}
 
 			genericResp.ToolCalls = append(genericResp.ToolCalls, toolCall)
-		}
-
-		// Handle explanation for Answer/Question/Tool
-		// We always add explanation to text so it appears as an analysis step
-		if explanation, ok := r["explanation"].(string); ok && explanation != "" {
-			finalAnswer.WriteString("\n" + explanation + "\n")
 		}
 	}
 
 	genericResp.Text = strings.TrimSpace(finalAnswer.String())
 	return genericResp, nil
-}
-
-// sanitizeJSON attempts to fix common JSON formatting issues from LLMs
-func sanitizeJSON(s string) string {
-	// If the string contains unescaped newlines within quotes, we need to escape them
-	// This is a naive implementation but handles the most common case
-	var result strings.Builder
-	inString := false
-	escaped := false
-
-	for _, r := range s {
-		if escaped {
-			result.WriteRune(r)
-			escaped = false
-			continue
-		}
-
-		if r == '\\' {
-			escaped = true
-			result.WriteRune(r)
-			continue
-		}
-
-		if r == '"' {
-			inString = !inString
-		}
-
-		if inString {
-			if r == '\n' {
-				result.WriteString("\\n")
-				continue
-			}
-			if r == '\t' {
-				result.WriteString("\\t")
-				continue
-			}
-			if r == '\r' {
-				continue // skip carriage returns
-			}
-		}
-
-		result.WriteRune(r)
-	}
-
-	return result.String()
 }
