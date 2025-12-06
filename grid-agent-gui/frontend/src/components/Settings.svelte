@@ -124,22 +124,22 @@
   <div class="modal-overlay" on:click={close} transition:fade>
     <div class="modal" on:click|stopPropagation transition:fly={{ y: 20 }}>
       <div class="header">
-        <h2>Personalization Settings</h2>
+        <h2>Persona Settings</h2>
         <button class="close-btn" on:click={close}>&times;</button>
       </div>
 
       <div class="content">
         {#if isCreating || editingProfile}
           <div class="form" in:fade>
-            <h3>{isCreating ? "Create New Profile" : "Edit Profile"}</h3>
+            <h3>{isCreating ? "Create New Persona" : "Edit Persona"}</h3>
 
             <div class="form-group">
-              <label for="name">Profile Name</label>
+              <label for="name">Persona Name</label>
               <input
                 type="text"
                 id="name"
                 bind:value={formName}
-                placeholder="e.g., Pirate Mode, Python Expert"
+                placeholder="e.g., Rapid Responder, Thorough Investigator"
               />
             </div>
 
@@ -169,17 +169,17 @@
         {:else}
           <div class="profile-list" in:fade>
             <div class="list-header">
-              <h3>Your Profiles</h3>
+              <h3>Your Personas</h3>
               <button class="btn primary small" on:click={startCreate}
-                >+ New Profile</button
+                >+ New Persona</button
               >
             </div>
 
             {#if profiles.length === 0}
               <div class="empty-state">
-                <p>No profiles created yet.</p>
+                <p>No personas created yet.</p>
                 <p class="sub">
-                  Create a profile to customize the agent's behavior.
+                  Create a persona to customize the agent's behavior.
                 </p>
               </div>
             {:else}
@@ -309,7 +309,7 @@
     <div class="modal delete-modal" on:click|stopPropagation transition:fade>
       <h2>Confirm Delete</h2>
       <p>
-        Are you sure you want to delete the profile "{profileToDelete?.name}"?
+        Are you sure you want to delete the persona "{profileToDelete?.name}"?
       </p>
       <p class="warning">This action cannot be undone.</p>
       <div class="modal-actions">

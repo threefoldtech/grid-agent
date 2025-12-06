@@ -61,7 +61,7 @@
       await deactivateProfile();
       // Optional: Add a toast notification here
     } catch (err) {
-      console.error("Failed to deactivate profile:", err);
+      console.error("Failed to deactivate persona:", err);
       errorMessage = "Failed to disable persona: " + err;
       showErrorModal = true;
     }
