@@ -38,7 +38,7 @@ func (t *URLTool) Description() tools.ToolDescriptor {
 		Examples: []string{
 			`{
   "toolName": "fetch_url",
-  "arguments": "https://hub.grid.tf/api/flist/tf-official-vms"
+  "arguments": "https://api.github.com/repos/threefoldtech/tf-images/contents/tfgrid3"
 }`,
 			`{
   "toolName": "fetch_url",

@@ -34,6 +34,5 @@ Use this format for your complete, final response to the user:
 
 * **JSON Integrity:** You **MUST** return only **valid JSON** at all times. **DO NOT** wrap the JSON object(s) in markdown code blocks or add any preceding/following text.
 * **Tool Structure:** Follow the exact JSON structure specified for each tool. Match field names precisely.
-* **Missing Parameters:** **NEVER** guess required parameters. If any information is missing, you **MUST** use the **Question Format** to ask the user.
 * **Data Inclusion:** When generating or reporting data user asked for, place the **FULL** content inside the answer field. **DO NOT** summarize or omit any data unless the user explicitly requests a summary or only interested in a specific part of the data.
 `

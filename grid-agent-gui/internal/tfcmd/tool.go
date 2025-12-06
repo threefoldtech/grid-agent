@@ -71,6 +71,8 @@ VALIDATION RULES:
 - Check that ALL required positional arguments are provided (look for "args" in the schema)
 - Evaluate the 'Mutually Exclusive Flags' and 'Flag Groups' sections for the target subcommand.
 - If any required flags or arguments are missing, ask the user first
+- resources names must contain only letters and numbers
+- Always remember that deploy kubernetes|vm --ssh flag takes the file path not the file content
 
 FLAG GROUPS (must be set together):
 - deploy vm: if --flist is provided, --entrypoint MUST also be provided
@@ -90,14 +92,16 @@ BOOLEAN FLAG SYNTAX:
 
 SSH KEYS IN ENV VARS:
 - Some flists require SSH key as ENV VAR (e.g., SSH_KEY, pub_key)
-- This is DIFFERENT from --ssh flag (which takes a file path)
 - For ENV VAR: pass the actual key CONTENT, not the file path
-- First read the key file, then use: --env SSH_KEY="ssh-rsa AAA..."
 
 CANCEL/DELETE:
 - By name: tfcmd cancel <deployment-name> (preferred for single deployments)
 - By contract: tfcmd cancel contracts <contract-id>
 - Cancel all: tfcmd cancel contracts -a (REQUIRES explicit user confirmation!)
+
+OTHER RELEVANT INFORMATION:
+- Don't Ask user for his twin ID, instead look it up as it it usually can be seen in the output of tfcmd, such "get" or "contracts", etc.
+- Always use --disable-sentry with any deploy commands unless user specified otherwise
 
 %s`, schemaJSON),
 		Examples: []string{
