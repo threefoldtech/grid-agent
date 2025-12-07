@@ -1,6 +1,7 @@
 export namespace main {
 	
 	export class Step {
+	    type: string;
 	    progressText: string;
 	    exportPrefix: string;
 	    commandID: string;
@@ -14,6 +15,7 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
 	        this.progressText = source["progressText"];
 	        this.exportPrefix = source["exportPrefix"];
 	        this.commandID = source["commandID"];

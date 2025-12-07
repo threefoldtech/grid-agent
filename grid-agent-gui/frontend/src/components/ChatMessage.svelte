@@ -5,6 +5,14 @@
   import AnsiToHtml from "ansi-to-html";
   import { marked } from "marked";
   import DOMPurify from "dompurify";
+  import { BrowserOpenURL } from "../../wailsjs/runtime/runtime.js";
+
+  // Step types
+  const STEP_TYPE_TOOL = "tool";
+  const STEP_TYPE_ANALYSIS = "analysis";
+  const STEP_TYPE_QUESTION = "question";
+  const STEP_TYPE_ANSWER = "answer";
+  const STEP_TYPE_ERROR = "error";
 
   export let message: {
     role: string;
@@ -12,12 +20,11 @@
     timestamp: string;
     requestID?: string;
     steps?: Array<{
+      type: string;
       progressText: string;
       content: string;
       output: string;
       error: string;
-      // Deprecated
-      type?: string;
     }>;
     // Deprecated fields (backward compatibility)
     isCommand?: boolean;
@@ -27,6 +34,32 @@
 
   const isUser = message.role === "user";
   let showSteps = false;
+
+  // Helper function to check if step should be numbered
+  function shouldNumberStep(step: { type?: string }): boolean {
+    return (
+      step.type !== STEP_TYPE_ANALYSIS &&
+      step.type !== STEP_TYPE_QUESTION &&
+      step.type !== STEP_TYPE_ANSWER
+    );
+  }
+
+  // Calculate step numbers excluding analysis, question, and answer steps
+  // Optimized: O(n) single-pass algorithm instead of O(n²)
+  $: stepNumbers = message.steps
+    ? (() => {
+        let count = 0;
+        return message.steps.map((step) => {
+          if (!shouldNumberStep(step)) return null;
+          return ++count;
+        });
+      })()
+    : [];
+
+  // Count of visible steps (excluding analysis, question, and answer steps)
+  $: visibleStepCount = message.steps
+    ? message.steps.filter(shouldNumberStep).length
+    : 0;
 
   // ANSI to HTML converter
   const ansiConverter = new AnsiToHtml({
@@ -59,6 +92,18 @@
     const rawHtml = marked.parse(text) as string;
     return DOMPurify.sanitize(rawHtml);
   }
+
+  // Handle link clicks to open in external browser
+  function handleLinkClick(event: MouseEvent) {
+    const target = event.target as HTMLElement;
+
+    // Check if clicked element is a link or inside a link
+    const link = target.closest("a");
+    if (link && link.href) {
+      event.preventDefault();
+      BrowserOpenURL(link.href);
+    }
+  }
 </script>
 
 <div class="message-wrapper {isUser ? 'user' : 'agent'}" in:fade>
@@ -73,7 +118,7 @@
   <div class="content-wrapper">
     <div class="bubble">
       {#if message.content}
-        <div class="text markdown-body">
+        <div class="text markdown-body" on:click={handleLinkClick}>
           {@html renderMarkdown(message.content)}
         </div>
       {:else if message.steps && message.steps.length > 0}
@@ -96,8 +141,8 @@
       <div class="steps-container">
         <button class="steps-toggle" on:click={() => (showSteps = !showSteps)}>
           <span class="toggle-icon">{showSteps ? "▼" : "▶"}</span>
-          Show workflow ({message.steps.length}
-          {message.steps.length === 1 ? "step" : "steps"})
+          Show workflow ({visibleStepCount}
+          {visibleStepCount === 1 ? "step" : "steps"})
         </button>
 
         {#if showSteps}
@@ -105,7 +150,9 @@
             {#each message.steps as step, i}
               <div class="step">
                 <div class="step-header">
-                  <span class="step-number">{i + 1}</span>
+                  {#if shouldNumberStep(step)}
+                    <span class="step-number">{stepNumbers[i]}</span>
+                  {/if}
                   <span class="step-type">
                     {step.progressText}
                   </span>

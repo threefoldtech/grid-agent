@@ -31,6 +31,7 @@
   let showSettings = false;
   let errorMessage = "";
   let isExporting = false;
+  let isAborting = false;
 
   // Update notification state
   let showUpdateBanner = false;
@@ -165,13 +166,18 @@
   }
 
   async function handleAbort() {
-    if (!currentRequestID || !isSending) return;
+    if (!currentRequestID || !isSending || isAborting) return;
 
+    isAborting = true;
     try {
       await AbortWorkflow(currentRequestID);
       console.log("Workflow aborted:", currentRequestID);
     } catch (error) {
       console.error("Failed to abort workflow:", error);
+      errorMessage = "Failed to abort workflow: " + error;
+      showErrorModal = true;
+    } finally {
+      isAborting = false;
     }
   }
 
@@ -438,15 +444,33 @@
       {/if}
     </div>
 
-    <!-- Update Banner -->
-    {#if showUpdateBanner && updateInfo}
-      <div class="update-banner" transition:fly={{ y: -20, duration: 400 }}>
-        <div class="banner-content">
-          <div class="icon-wrapper">
+    <div class="controls">
+      {#if showUpdateBanner && updateInfo}
+        <button
+          class="icon-btn update-btn"
+          on:click|preventDefault={openUpdateLink}
+          disabled={isOpeningLink}
+          title="Update Available ({updateInfo.latestVersion})"
+        >
+          {#if isOpeningLink}
+            <svg
+              class="animate-spin"
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              ><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg
+            >
+          {:else}
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
+              width="16"
+              height="16"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -463,54 +487,9 @@
               <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path>
               <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path>
             </svg>
-          </div>
-          <div class="text-group">
-            <span class="banner-title">Update Available</span>
-            <span class="banner-desc"
-              >Version <strong>{updateInfo.latestVersion}</strong> is closer than
-              you think</span
-            >
-          </div>
-        </div>
-        <div class="banner-actions">
-          <button
-            class="btn-update"
-            on:click|preventDefault={openUpdateLink}
-            disabled={isOpeningLink}
-          >
-            {#if isOpeningLink}
-              Opening...
-            {:else}
-              Download Update
-            {/if}
-          </button>
-          <button
-            class="btn-dismiss"
-            on:click={() => (showUpdateBanner = false)}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              ><line x1="18" y1="6" x2="6" y2="18"></line><line
-                x1="6"
-                y1="6"
-                x2="18"
-                y2="18"
-              ></line></svg
-            >
-          </button>
-        </div>
-      </div>
-    {/if}
-
-    <div class="controls">
+          {/if}
+        </button>
+      {/if}
       <button
         class="icon-btn"
         on:click={handleExport}
@@ -646,9 +625,27 @@
         <button
           class="abort-btn-input"
           on:click={handleAbort}
-          title="Abort workflow"
+          disabled={isAborting}
+          title={isAborting ? "Aborting..." : "Abort workflow"}
         >
-          ⏹ Abort
+          {#if isAborting}
+            <svg
+              class="animate-spin"
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              ><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg
+            >
+            Aborting...
+          {:else}
+            ⏹ Abort
+          {/if}
         </button>
       {:else}
         <button
@@ -939,120 +936,10 @@
     transform: translateY(-1px);
   }
 
-  .update-banner {
-    background: rgba(29, 78, 216, 0.15);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(59, 130, 246, 0.3);
-    margin: 1rem 1.5rem 0;
-    padding: 0.75rem 1rem;
-    border-radius: 12px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    box-shadow:
-      0 4px 6px -1px rgba(0, 0, 0, 0.1),
-      0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  }
-
-  .banner-content {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
-
-  .icon-wrapper {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
-  }
-
-  .text-group {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.1rem;
-  }
-
-  .banner-title {
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: #93c5fd;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .banner-desc {
-    font-size: 0.95rem;
-    color: #e2e8f0;
-  }
-
-  .banner-desc strong {
-    color: white;
-    font-weight: 600;
-  }
-
-  .banner-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .btn-update {
-    background: linear-gradient(90deg, #2563eb 0%, #1d4ed8 100%);
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 140px;
-  }
-
-  .btn-update:hover:not(:disabled) {
-    box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
-    background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
-  }
-
-  .btn-update:active:not(:disabled) {
-    transform: translateY(1px);
-    box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
-  }
-
-  .btn-update:disabled {
-    opacity: 0.7;
-    cursor: wait;
+  .abort-btn-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
     transform: none;
-  }
-
-  .btn-dismiss {
-    background: transparent;
-    border: none;
-    color: #94a3b8;
-    padding: 0.4rem;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .btn-dismiss:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
   }
 
   /* Logout Modal */
@@ -1175,30 +1062,20 @@
     }
   }
 
-  /* Light Theme Overrides for Update Banner */
-  :global([data-theme="light"]) .update-banner {
-    background: rgba(59, 130, 246, 0.1);
-    border: 1px solid rgba(59, 130, 246, 0.2);
+  /* Update Button Flashing Animation */
+  @keyframes flash-accent {
+    0%,
+    100% {
+      background: transparent;
+      color: var(--text-secondary);
+    }
+    50% {
+      background: var(--accent);
+      color: white;
+    }
   }
 
-  :global([data-theme="light"]) .banner-title {
-    color: #1e40af; /* blue-800 */
-  }
-
-  :global([data-theme="light"]) .banner-desc {
-    color: #475569; /* slate-600 */
-  }
-
-  :global([data-theme="light"]) .banner-desc strong {
-    color: #1e3a8a; /* blue-900 */
-  }
-
-  :global([data-theme="light"]) .btn-dismiss {
-    color: #64748b; /* slate-500 */
-  }
-
-  :global([data-theme="light"]) .btn-dismiss:hover {
-    color: #0f172a; /* slate-900 */
-    background: rgba(0, 0, 0, 0.05); /* slightly dark hover */
+  .update-btn {
+    animation: flash-accent 2s infinite;
   }
 </style>

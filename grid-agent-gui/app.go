@@ -55,8 +55,18 @@ type Profile struct {
 	Instructions string `json:"instructions"`
 }
 
+// Step types
+const (
+	StepTypeTool     = "tool"
+	StepTypeAnalysis = "analysis"
+	StepTypeQuestion = "question"
+	StepTypeAnswer   = "answer"
+	StepTypeError    = "error"
+)
+
 // Step represents a single step in the agent's workflow
 type Step struct {
+	Type         string `json:"type"`         // Step type: "tool", "analysis", "question", "answer", "error"
 	ProgressText string `json:"progressText"` // Visual title with emoji: "⚡ Command Executed"
 	ExportPrefix string `json:"exportPrefix"` // Export prefix: "Command:", "URL:"
 	CommandID    string `json:"commandID"`    // Unique ID for command steps
@@ -230,6 +240,7 @@ func (g *GUIMessageCollector) OnToolExecution(toolCallID, toolName, progressText
 	needsCommandID = isStreaming
 
 	step := Step{
+		Type:         StepTypeTool,
 		ProgressText: progressText,
 		ExportPrefix: exportPrefix,
 		Content:      displayArgs,
@@ -284,6 +295,7 @@ func (g *GUIMessageCollector) OnAnswer(answer string) error {
 
 	// Add as a step if it's not already there
 	step := Step{
+		Type:         StepTypeAnswer,
 		ProgressText: "💡 Answer",
 		ExportPrefix: "",
 		Content:      answer,
@@ -319,6 +331,7 @@ func (g *GUIMessageCollector) OnQuestion(question string) error {
 
 	// Also emit as a step for consistency
 	step := Step{
+		Type:         StepTypeQuestion,
 		ProgressText: "❓ Question",
 		ExportPrefix: "",
 		Content:      question,
@@ -331,6 +344,7 @@ func (g *GUIMessageCollector) OnQuestion(question string) error {
 
 func (g *GUIMessageCollector) OnError(message string) {
 	step := Step{
+		Type:         StepTypeError,
 		ProgressText: "❌ Error",
 		ExportPrefix: "",
 		Error:        message,
@@ -347,6 +361,7 @@ func (g *GUIMessageCollector) OnError(message string) {
 
 func (g *GUIMessageCollector) OnExplanation(text string) {
 	step := Step{
+		Type:         StepTypeAnalysis,
 		ProgressText: "📊 Analysis",
 		ExportPrefix: "",
 		Content:      text,
