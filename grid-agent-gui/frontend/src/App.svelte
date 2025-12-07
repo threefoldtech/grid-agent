@@ -1,29 +1,34 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { fade } from 'svelte/transition';
-  import { GetSettings, SaveSettings, SendMessage, SetTheme } from '../wailsjs/go/main/App.js';
-  import Onboarding from './components/Onboarding.svelte';
-  import ChatInterface from './components/ChatInterface.svelte';
-  import { themeStore, settingsStore, messagesStore } from './stores/stores';
+  import { onMount } from "svelte";
+  import { fade } from "svelte/transition";
+  import {
+    GetSettings,
+    SaveSettings,
+    SendMessage,
+    SetTheme,
+  } from "../wailsjs/go/main/App.js";
+  import Onboarding from "./components/Onboarding.svelte";
+  import ChatInterface from "./components/ChatInterface.svelte";
+  import { themeStore, settingsStore, messagesStore } from "./stores/stores";
 
-  import AnsiToHtml from 'ansi-to-html';
+  import AnsiToHtml from "ansi-to-html";
 
   let isConfigured = false;
   let isLoading = true;
-  let currentTheme = 'dark';
-  let errorMessage = '';
+  let currentTheme = "dark";
+  let errorMessage = "";
   let showErrorModal = false;
 
   // ANSI to HTML converter for error messages
   const ansiConverter = new AnsiToHtml({
-    fg: '#d4d4d4',
-    bg: '#1e1e1e',
+    fg: "#d4d4d4",
+    bg: "#1e1e1e",
     newline: true,
     escapeXML: true,
   });
 
   function renderAnsi(text: string): string {
-    if (!text) return '';
+    if (!text) return "";
     return ansiConverter.toHtml(text);
   }
 
@@ -31,14 +36,14 @@
     try {
       const settings = await GetSettings();
       isConfigured = settings.isConfigured;
-      currentTheme = settings.theme || 'dark';
+      currentTheme = settings.theme || "dark";
       themeStore.set(currentTheme);
       settingsStore.set(settings);
-      
+
       // Clear messages on startup (history not persisted across sessions)
       messagesStore.set([]);
     } catch (error) {
-      console.error('Failed to load settings:', error);
+      console.error("Failed to load settings:", error);
     } finally {
       isLoading = false;
     }
@@ -52,25 +57,25 @@
       const settings = await GetSettings();
       settingsStore.set(settings);
     } catch (error) {
-      console.error('Failed to save settings:', error);
-      errorMessage = 'Failed to save settings: ' + error;
+      console.error("Failed to save settings:", error);
+      errorMessage = "Failed to save settings: " + error;
       showErrorModal = true;
     }
   }
 
   function closeErrorModal() {
     showErrorModal = false;
-    errorMessage = '';
+    errorMessage = "";
   }
 
   async function toggleTheme() {
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    const newTheme = currentTheme === "dark" ? "light" : "dark";
     currentTheme = newTheme;
     themeStore.set(newTheme);
     await SetTheme(newTheme);
   }
 
-  $: document.documentElement.setAttribute('data-theme', currentTheme);
+  $: document.documentElement.setAttribute("data-theme", currentTheme);
 </script>
 
 <main class="app" data-theme={currentTheme}>
@@ -108,34 +113,66 @@
   }
 
   :global(body) {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family:
+      "Inter",
+      "Nunito",
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    background: var(--bg-primary); /* Ensure background is set on body too */
   }
 
   :global(:root) {
-    --bg-primary: #0f172a;
-    --bg-secondary: #1e293b;
-    --bg-tertiary: #334155;
-    --text-primary: #f1f5f9;
-    --text-secondary: #cbd5e1;
+    /* Richer Dark Theme (Midnight Blue) */
+    --bg-primary: #0f172a; /* Deep slate/midnight */
+    --bg-secondary: #1e293b; /* Lighter slate */
+    --bg-tertiary: #334155; /* Even lighter for borders/elements */
+    --bg-glass: rgba(15, 23, 42, 0.85); /* Glass effect base */
+
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+
+    /* Vibrant Gradient Accent */
     --accent: #3b82f6;
+    --accent-gradient: linear-gradient(
+      135deg,
+      #3b82f6 0%,
+      #06b6d4 100%
+    ); /* Blue to Cyan */
     --accent-hover: #2563eb;
+    --accent-glow: 0 0 15px rgba(59, 130, 246, 0.4);
+
     --success: #10b981;
     --error: #ef4444;
-    --border: #475569;
+    --border: #334155;
+
+    --font-heading: "Nunito", sans-serif; /* Use Nunito for headings if loaded */
+    --radius-lg: 1rem;
+    --radius-md: 0.75rem;
+    --radius-sm: 0.5rem;
   }
 
   :global([data-theme="light"]) {
-    --bg-primary: #ffffff;
-    --bg-secondary: #f8fafc;
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
     --bg-tertiary: #e2e8f0;
+    --bg-glass: rgba(255, 255, 255, 0.85);
+
     --text-primary: #0f172a;
-    --text-secondary: #475569;
+    --text-secondary: #64748b;
+
+    /* Slightly softer gradient for light mode */
     --accent: #3b82f6;
-    --accent-hover: #2563eb;
-    --success: #10b981;
-    --error: #ef4444;
+    --accent-gradient: linear-gradient(135deg, #2563eb 0%, #0891b2 100%);
+    --accent-hover: #1d4ed8;
+    --accent-glow: 0 0 10px rgba(37, 99, 235, 0.2);
+
+    --success: #059669;
+    --error: #dc2626;
     --border: #cbd5e1;
   }
 
@@ -145,6 +182,26 @@
     background: var(--bg-primary);
     color: var(--text-primary);
     overflow: hidden;
+  }
+
+  /* Global Utilities */
+  :global(.glass) {
+    background: var(--bg-glass) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  :global([data-theme="light"] .glass) {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  :global(.text-gradient) {
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
   }
 
   .loading {
@@ -166,7 +223,9 @@
   }
 
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   /* Error Modal */
@@ -212,7 +271,7 @@
   }
 
   .error-text {
-    font-family: 'Courier New', Consolas, Monaco, monospace;
+    font-family: "Courier New", Consolas, Monaco, monospace;
     font-size: 0.875rem;
     text-align: left;
     background: var(--bg-primary);

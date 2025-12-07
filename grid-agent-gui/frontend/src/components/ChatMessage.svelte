@@ -207,7 +207,19 @@
   .message-wrapper {
     display: flex;
     gap: 1rem;
-    max-width: 80%;
+    max-width: 85%;
+    animation: slideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .message-wrapper.user {
@@ -218,7 +230,7 @@
   .avatar {
     width: 36px;
     height: 36px;
-    border-radius: 50%;
+    border-radius: 12px; /* Slightly squircle */
     background: var(--bg-tertiary);
     display: flex;
     align-items: center;
@@ -226,6 +238,7 @@
     font-size: 1.25rem;
     flex-shrink: 0;
     overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
 
   .avatar img {
@@ -237,47 +250,40 @@
   .content-wrapper {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    min-width: 0; /* Critical for flex items to shrink/wrap correctly */
+    gap: 0.25rem;
+    min-width: 0;
   }
 
   .bubble {
-    padding: 1rem;
-    border-radius: 1rem;
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    line-height: 1.5;
+    padding: 1rem 1.25rem;
+    border-radius: 1.25rem;
+    line-height: 1.6;
     white-space: pre-wrap;
     word-break: break-word;
     overflow-wrap: anywhere;
     text-align: left;
+    font-size: 0.95rem;
   }
 
   .user .bubble {
-    background: var(--accent);
+    background: var(--accent-gradient);
     color: white;
     border-bottom-right-radius: 0.25rem;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
   }
 
   .agent .bubble {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
     border-top-left-radius: 0.25rem;
+    border: 1px solid var(--border);
   }
 
-  .timestamp {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    margin: 0 0.5rem;
-  }
-
-  .user .timestamp {
-    text-align: right;
-  }
-
-  /* Typing Indicator */
+  /* Premium typing indicator */
   .typing-indicator {
     display: flex;
-    gap: 0.25rem;
-    padding: 0.25rem 0;
+    gap: 0.3rem;
+    padding: 0.5rem 0.25rem;
   }
 
   .typing-indicator span {
@@ -285,25 +291,30 @@
     height: 6px;
     background: var(--text-secondary);
     border-radius: 50%;
-    animation: bounce 1.4s infinite ease-in-out both;
+    animation: flow 1.4s infinite ease-in-out both;
   }
 
-  .typing-indicator span:nth-child(1) {
-    animation-delay: -0.32s;
-  }
-  .typing-indicator span:nth-child(2) {
-    animation-delay: -0.16s;
-  }
-
-  @keyframes bounce {
+  @keyframes flow {
     0%,
     80%,
     100% {
-      transform: scale(0);
+      opacity: 0.4;
+      transform: translateY(0);
     }
     40% {
-      transform: scale(1);
+      opacity: 1;
+      transform: translateY(-4px);
     }
+  }
+
+  .typing-indicator span:nth-child(1) {
+    animation-delay: 0s;
+  }
+  .typing-indicator span:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+  .typing-indicator span:nth-child(3) {
+    animation-delay: 0.3s;
   }
 
   /* Steps styling */
@@ -488,14 +499,30 @@
   .markdown-body :global(a) {
     color: var(--accent);
     text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+    border-bottom: 1px solid transparent;
   }
 
   .markdown-body :global(a:hover) {
+    border-bottom-color: var(--accent);
+    text-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+  }
+
+  /* Make links inside user bubble white */
+  .user .markdown-body :global(a) {
+    color: white;
     text-decoration: underline;
+    opacity: 0.9;
+  }
+
+  .user .markdown-body :global(a:hover) {
+    opacity: 1;
+    text-shadow: none;
   }
 
   .markdown-body :global(strong) {
-    font-weight: 600;
-    color: var(--text-primary);
+    font-weight: 700;
+    color: inherit; /* inherit ensures it looks good in user bubbles too */
   }
 </style>
