@@ -23,6 +23,7 @@ import (
 	"github.com/threefoldtech/grid-agent/grid-agent-gui/internal/tfcmd"
 	"github.com/threefoldtech/grid-agent/grid-cli/cmd"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"google.golang.org/genai"
 )
 
 // Version is the current application version (set via ldflags during build)
@@ -42,6 +43,7 @@ type Settings struct {
 	Mnemonics       string    `json:"mnemonics"`
 	Network         string    `json:"network"` // mainnet, testnet, devnet
 	GeminiAPIKey    string    `json:"geminiApiKey"`
+	Model           string    `json:"model"`
 	Theme           string    `json:"theme"` // light, dark
 	IsConfigured    bool      `json:"isConfigured"`
 	Profiles        []Profile `json:"profiles"`
@@ -184,7 +186,7 @@ func (a *App) SaveSettings(mnemonics, network, apiKey string) error {
 	}
 
 	// Initialize agent
-	if err := a.initializeAgent(); err != nil {
+	if err := a.initializeAgent(AgentInitOptions{}); err != nil {
 		return fmt.Errorf("failed to initialize agent: %w", err)
 	}
 
@@ -454,7 +456,7 @@ func (a *App) loadSettings() {
 	// If configured, initialize services
 	if a.settings.IsConfigured {
 		_ = os.Setenv("GEMINI_API_KEY", a.settings.GeminiAPIKey)
-		if err := a.initializeAgent(); err != nil {
+		if err := a.initializeAgent(AgentInitOptions{}); err != nil {
 			log.Printf("Failed to initialize agent: %v", err)
 		}
 	}
@@ -538,7 +540,13 @@ func (a *App) runTfcmdLogin() error {
 	return nil
 }
 
-func (a *App) initializeAgent() error {
+// AgentInitOptions holds options for agent initialization
+type AgentInitOptions struct {
+	ContextChangeMsg string // Message to add to history as system notice
+	ClearHistory     bool   // Whether to clear history instead of carrying it over
+}
+
+func (a *App) initializeAgent(opts AgentInitOptions) error {
 	// Create streaming callback for real-time command output
 	streamCallback := func(requestID, commandID, line string) {
 		// Debug: Log what we're emitting
@@ -574,14 +582,62 @@ func (a *App) initializeAgent() error {
 		toolNames = append(toolNames, tool.Name())
 	}
 
+	// Capture history from existing agent if available (for session carry-over)
+	var history any
+	if !opts.ClearHistory && a.agent != nil {
+		if provider := a.agent.GetProvider(); provider != nil {
+			// Get raw history using interface method
+			if rawHistory := provider.GetRawHistory(); rawHistory != nil {
+				// Make a copy to avoid modifying previous session
+				if h, ok := rawHistory.([]*genai.Content); ok {
+					historySlice := make([]*genai.Content, len(h))
+					copy(historySlice, h)
+
+					// If we have a context change message, append it to history
+					if opts.ContextChangeMsg != "" {
+						// Append User message with the notice
+						userContent := &genai.Content{
+							Role: "user",
+							Parts: []*genai.Part{
+								{Text: fmt.Sprintf("\n\n[SYSTEM NOTICE: %s]\n\n", opts.ContextChangeMsg)},
+							},
+						}
+						// Append Model acknowledgement to keep the turn structure valid (User -> Model)
+						modelContent := &genai.Content{
+							Role: "model",
+							Parts: []*genai.Part{
+								{Text: "[System state update acknowledged.]"},
+							},
+						}
+						historySlice = append(historySlice, userContent, modelContent)
+						log.Printf("Carrying over chat history with context marker: %s", opts.ContextChangeMsg)
+					} else {
+						log.Printf("Carrying over chat history without context marker")
+					}
+
+					history = historySlice
+				}
+			}
+		}
+	} else if opts.ClearHistory {
+		log.Printf("Clearing chat history as requested")
+	}
+
+	// Determine model
+	modelName := "gemini-2.5-flash"
+	if a.settings.Model != "" {
+		modelName = a.settings.Model
+	}
+
 	// Create LLM provider with dynamic tool documentation
 	providerConfig := llm.Config{
-		ModelName:        "gemini-2.5-flash",
+		ModelName:        modelName,
 		ResponseMIMEType: "application/json",
 		SystemPrompt:     strings.Replace(internalConfig.GetSystemPrompt(a.settings.Network, a.getActiveInstructions()), "{{TOOL_DESCRIPTIONS}}", toolDocs, 1),
 		MaxRetries:       3,
 		MaxJSONRetries:   2,
 		RegisteredTools:  toolNames, // Pass tool names for dynamic parsing
+		History:          history,   // Pass previous history
 	}
 
 	provider, err := llm.NewGeminiProviderWithConfig(a.settings.GeminiAPIKey, providerConfig)
@@ -598,15 +654,23 @@ func (a *App) initializeAgent() error {
 	return nil
 }
 
+// getProfileByID returns a pointer to the profile and its index, or nil and -1 if not found
+func (a *App) getProfileByID(id string) (*Profile, int) {
+	for i := range a.settings.Profiles {
+		if a.settings.Profiles[i].ID == id {
+			return &a.settings.Profiles[i], i
+		}
+	}
+	return nil, -1
+}
+
 // getActiveInstructions returns the instructions for the active profile
 func (a *App) getActiveInstructions() string {
 	if a.settings.ActiveProfileID == "" {
 		return ""
 	}
-	for _, p := range a.settings.Profiles {
-		if p.ID == a.settings.ActiveProfileID {
-			return p.Instructions
-		}
+	if p, _ := a.getProfileByID(a.settings.ActiveProfileID); p != nil {
+		return p.Instructions
 	}
 	return ""
 }
@@ -633,48 +697,51 @@ func (a *App) AddProfile(name, instructions string) (*Settings, error) {
 
 // UpdateProfile updates an existing profile
 func (a *App) UpdateProfile(id, name, instructions string) (*Settings, error) {
-	for i, p := range a.settings.Profiles {
-		if p.ID == id {
-			a.settings.Profiles[i].Name = name
-			a.settings.Profiles[i].Instructions = instructions
-
-			if err := a.saveSettingsToFile(); err != nil {
-				return nil, err
-			}
-
-			// If this is the active profile, we need to re-initialize the agent to pick up changes
-			if a.settings.ActiveProfileID == id {
-				// Re-initialize agent in background to avoid blocking UI
-				go func() {
-					if err := a.initializeAgent(); err != nil {
-						log.Printf("Failed to re-initialize agent after profile update: %v", err)
-					}
-				}()
-			}
-
-			return a.settings, nil
-		}
+	_, idx := a.getProfileByID(id)
+	if idx == -1 {
+		return nil, fmt.Errorf("profile not found")
 	}
-	return nil, fmt.Errorf("profile not found")
+
+	a.settings.Profiles[idx].Name = name
+	a.settings.Profiles[idx].Instructions = instructions
+
+	if err := a.saveSettingsToFile(); err != nil {
+		return nil, err
+	}
+
+	// If this is the active profile, we need to re-initialize the agent to pick up changes
+	if a.settings.ActiveProfileID == id {
+		// Re-initialize agent in background to avoid blocking UI
+		go func() {
+			if err := a.initializeAgent(AgentInitOptions{
+				ContextChangeMsg: "Context Update: The user has modified the profile instructions. You must adhere to the new system prompt and ignore previous persona instructions if they conflict.",
+				ClearHistory:     false,
+			}); err != nil {
+				log.Printf("Failed to re-initialize agent after profile update: %v", err)
+			}
+		}()
+	}
+
+	return a.settings, nil
 }
 
 // DeleteProfile deletes a profile
 func (a *App) DeleteProfile(id string) (*Settings, error) {
-	newProfiles := []Profile{}
-	for _, p := range a.settings.Profiles {
-		if p.ID != id {
-			newProfiles = append(newProfiles, p)
-		}
+	_, idx := a.getProfileByID(id)
+	if idx != -1 {
+		// Remove the profile at idx
+		a.settings.Profiles = append(a.settings.Profiles[:idx], a.settings.Profiles[idx+1:]...)
 	}
-
-	a.settings.Profiles = newProfiles
 
 	// If active profile was deleted, deactivate it
 	if a.settings.ActiveProfileID == id {
 		a.settings.ActiveProfileID = ""
 		// Re-initialize agent
 		go func() {
-			if err := a.initializeAgent(); err != nil {
+			if err := a.initializeAgent(AgentInitOptions{
+				ContextChangeMsg: "Profile deleted. Reverting to default instructions.",
+				ClearHistory:     false,
+			}); err != nil {
 				log.Printf("Failed to re-initialize agent after profile deletion: %v", err)
 			}
 		}()
@@ -687,18 +754,59 @@ func (a *App) DeleteProfile(id string) (*Settings, error) {
 	return a.settings, nil
 }
 
+// UpdateAdvancedSettings updates the API key and model
+func (a *App) UpdateAdvancedSettings(apiKey, model string) (*Settings, error) {
+	if apiKey == "" {
+		return nil, fmt.Errorf("API key cannot be empty")
+	}
+
+	a.settings.GeminiAPIKey = apiKey
+	a.settings.Model = model
+
+	if err := a.saveSettingsToFile(); err != nil {
+		return nil, err
+	}
+
+	// Re-initialize agent to apply new settings
+	if err := a.initializeAgent(AgentInitOptions{}); err != nil {
+		log.Printf("Failed to re-initialize agent after settings update: %v", err)
+		// We return the settings anyway as they are saved
+	}
+
+	return a.settings, nil
+}
+
+// UpdateGridSettings updates grid configuration (mnemonics and network)
+// This clears chat history since changing network/mnemonics means different twin/contracts
+func (a *App) UpdateGridSettings(mnemonics string, network string) (*Settings, error) {
+	a.settings.Mnemonics = mnemonics
+	a.settings.Network = network
+
+	if err := a.saveSettingsToFile(); err != nil {
+		return nil, err
+	}
+
+	// Run tfcmd login with new credentials
+	if err := a.runTfcmdLogin(); err != nil {
+		return nil, fmt.Errorf("failed to login with new grid credentials: %w", err)
+	}
+
+	// Re-initialize agent with CLEARED history (new network = new context)
+	if err := a.initializeAgent(AgentInitOptions{
+		ContextChangeMsg: fmt.Sprintf("Network changed to %s. Chat history cleared for new grid context.", network),
+		ClearHistory:     true, // Clear history for grid config changes
+	}); err != nil {
+		log.Printf("Failed to re-initialize agent after grid settings update: %v", err)
+		// We return the settings anyway as they are saved
+	}
+
+	return a.settings, nil
+}
+
 // ActivateProfile sets the active profile
 func (a *App) ActivateProfile(id string) (*Settings, error) {
 	// Verify profile exists
-	found := false
-	for _, p := range a.settings.Profiles {
-		if p.ID == id {
-			found = true
-			break
-		}
-	}
-
-	if !found {
+	if _, idx := a.getProfileByID(id); idx == -1 {
 		return nil, fmt.Errorf("profile not found")
 	}
 
@@ -709,7 +817,10 @@ func (a *App) ActivateProfile(id string) (*Settings, error) {
 	}
 
 	// Re-initialize agent
-	if err := a.initializeAgent(); err != nil {
+	if err := a.initializeAgent(AgentInitOptions{
+		ContextChangeMsg: "New profile activated with updated instructions.",
+		ClearHistory:     false,
+	}); err != nil {
 		return nil, fmt.Errorf("failed to re-initialize agent: %w", err)
 	}
 
@@ -725,7 +836,10 @@ func (a *App) DeactivateProfile() (*Settings, error) {
 	}
 
 	// Re-initialize agent
-	if err := a.initializeAgent(); err != nil {
+	if err := a.initializeAgent(AgentInitOptions{
+		ContextChangeMsg: "Profile deactivated. Reverting to default instructions.",
+		ClearHistory:     false,
+	}); err != nil {
 		return nil, fmt.Errorf("failed to re-initialize agent: %w", err)
 	}
 
@@ -791,5 +905,17 @@ func (a *App) ExportChat(content string, defaultFilename string) error {
 		return nil // User cancelled
 	}
 
-	return os.WriteFile(filename, []byte(content), 0644)
+	// Check for active persona
+	activePersona := ""
+	if a.settings.ActiveProfileID != "" {
+		if p, _ := a.getProfileByID(a.settings.ActiveProfileID); p != nil {
+			activePersona = p.Name
+		}
+	}
+
+	// Prepend metadata
+	metadata := fmt.Sprintf("# Chat Export\n\n**App Version:** %s\n**Active Persona:** %s\n\n---\n\n", Version, activePersona)
+	fullContent := metadata + content
+
+	return os.WriteFile(filename, []byte(fullContent), 0644)
 }

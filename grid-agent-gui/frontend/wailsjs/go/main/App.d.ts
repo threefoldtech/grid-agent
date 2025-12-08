@@ -28,4 +28,8 @@ export function SendMessage(arg1:string,arg2:string):Promise<main.Message>;
 
 export function SetTheme(arg1:string):Promise<void>;
 
+export function UpdateAdvancedSettings(arg1:string,arg2:string):Promise<main.Settings>;
+
+export function UpdateGridSettings(arg1:string,arg2:string):Promise<main.Settings>;
+
 export function UpdateProfile(arg1:string,arg2:string,arg3:string):Promise<main.Settings>;

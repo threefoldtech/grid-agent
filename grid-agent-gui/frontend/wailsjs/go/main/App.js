@@ -54,6 +54,14 @@ export function SetTheme(arg1) {
   return window['go']['main']['App']['SetTheme'](arg1);
 }
 
+export function UpdateAdvancedSettings(arg1, arg2) {
+  return window['go']['main']['App']['UpdateAdvancedSettings'](arg1, arg2);
+}
+
+export function UpdateGridSettings(arg1, arg2) {
+  return window['go']['main']['App']['UpdateGridSettings'](arg1, arg2);
+}
+
 export function UpdateProfile(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateProfile'](arg1, arg2, arg3);
 }

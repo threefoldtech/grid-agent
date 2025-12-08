@@ -88,6 +88,7 @@ export namespace main {
 	    mnemonics: string;
 	    network: string;
 	    geminiApiKey: string;
+	    model: string;
 	    theme: string;
 	    isConfigured: boolean;
 	    profiles: Profile[];
@@ -102,6 +103,7 @@ export namespace main {
 	        this.mnemonics = source["mnemonics"];
 	        this.network = source["network"];
 	        this.geminiApiKey = source["geminiApiKey"];
+	        this.model = source["model"];
 	        this.theme = source["theme"];
 	        this.isConfigured = source["isConfigured"];
 	        this.profiles = this.convertValues(source["profiles"], Profile);

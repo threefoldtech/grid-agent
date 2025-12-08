@@ -82,38 +82,6 @@ func NewGeminiProviderWithConfig(apiKey string, config Config) (*GeminiProvider,
 	return provider, nil
 }
 
-func (p *GeminiProvider) startChatSession(ctx context.Context) (*genai.Chat, error) {
-	var chat *genai.Chat
-	var err error
-
-	// Automatically append the mandatory JSON format instructions
-	fullPrompt := p.config.SystemPrompt + "\n" + JSONFormatInstructions
-
-	// Configure generation options
-	genConfig := &genai.GenerateContentConfig{
-		ResponseMIMEType: p.config.ResponseMIMEType,
-		SystemInstruction: &genai.Content{
-			Parts: []*genai.Part{{Text: fullPrompt}},
-		},
-	}
-
-	for i := 0; i < p.config.MaxRetries; i++ {
-		// Create a new chat session
-		// The new SDK uses client.Chats.Create
-		chat, err = p.client.Chats.Create(ctx, p.config.ModelName, genConfig, nil)
-		if err == nil && chat != nil {
-			return chat, nil
-		}
-
-		if i < p.config.MaxRetries-1 {
-			waitTime := time.Duration(1<<uint(i)) * time.Second
-			log.Printf("Failed to start chat session, retrying in %v... (attempt %d/%d) Error: %v", waitTime, i+1, p.config.MaxRetries, err)
-			time.Sleep(waitTime)
-		}
-	}
-	return nil, fmt.Errorf("failed to start chat session with Gemini after %d attempts: %w", p.config.MaxRetries, err)
-}
-
 // JSONParseError represents an error when parsing LLM response as JSON
 type JSONParseError struct {
 	OriginalText string
@@ -201,6 +169,66 @@ func (p *GeminiProvider) GetHistory() []Message {
 		})
 	}
 	return history
+}
+
+// GetRawHistory returns the raw history for session carry-over
+func (p *GeminiProvider) GetRawHistory() any {
+	if p.chat == nil {
+		return nil
+	}
+	return p.chat.History(true)
+}
+
+// AppendSystemNotice adds a system notice to the chat history
+// Note: This modifies the history that will be passed to the next session
+// The actual modification happens in the caller (app.go) before creating new provider
+func (p *GeminiProvider) AppendSystemNotice(message string) error {
+	// This is a no-op for now - the actual history modification
+	// happens in app.go before creating the new provider
+	// We keep this method to satisfy the interface
+	return nil
+}
+
+func (p *GeminiProvider) startChatSession(ctx context.Context) (*genai.Chat, error) {
+	var chat *genai.Chat
+	var err error
+
+	// Automatically append the mandatory JSON format instructions
+	fullPrompt := p.config.SystemPrompt + "\n" + JSONFormatInstructions
+	// log fullPrompt
+	log.Println("Full Prompt:", fullPrompt)
+
+	// Configure generation options
+	genConfig := &genai.GenerateContentConfig{
+		ResponseMIMEType: p.config.ResponseMIMEType,
+		SystemInstruction: &genai.Content{
+			Parts: []*genai.Part{{Text: fullPrompt}},
+		},
+	}
+
+	// Prepare history
+	var history []*genai.Content
+	if p.config.History != nil {
+		if h, ok := p.config.History.([]*genai.Content); ok {
+			history = h
+		}
+	}
+
+	for i := 0; i < p.config.MaxRetries; i++ {
+		// Create a new chat session
+		// The new SDK uses client.Chats.Create
+		chat, err = p.client.Chats.Create(ctx, p.config.ModelName, genConfig, history)
+		if err == nil && chat != nil {
+			return chat, nil
+		}
+
+		if i < p.config.MaxRetries-1 {
+			waitTime := time.Duration(1<<uint(i)) * time.Second
+			log.Printf("Failed to start chat session, retrying in %v... (attempt %d/%d) Error: %v", waitTime, i+1, p.config.MaxRetries, err)
+			time.Sleep(waitTime)
+		}
+	}
+	return nil, fmt.Errorf("failed to start chat session with Gemini after %d attempts: %w", p.config.MaxRetries, err)
 }
 
 // Close closes the Gemini client

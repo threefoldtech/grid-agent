@@ -13,6 +13,11 @@ type Agent struct {
 	tools    *tools.Registry
 }
 
+// GetProvider returns the underlying LLM provider
+func (a *Agent) GetProvider() llm.Provider {
+	return a.provider
+}
+
 // Config holds agent configuration
 type Config struct {
 	LLMProvider llm.Provider

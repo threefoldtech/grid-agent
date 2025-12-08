@@ -1,10 +1,13 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import { fade, fly } from "svelte/transition";
+  import { fade, scale, slide, fly } from "svelte/transition";
+  import { cubicOut } from "svelte/easing";
   import {
     AddProfile,
     UpdateProfile,
     DeleteProfile,
+    UpdateAdvancedSettings,
+    UpdateGridSettings,
   } from "../../wailsjs/go/main/App.js";
   import {
     settingsStore,
@@ -13,32 +16,134 @@
   } from "../stores/stores";
 
   const dispatch = createEventDispatcher();
-
   export let show = false;
 
-  let profiles = [];
+  // --- State ---
+  let profiles: any[] = [];
   let activeProfileID = "";
-  let editingProfile = null; // null means list view, object means editing
-  let isCreating = false;
+  let activeSection = "personas"; // 'personas' | 'config' | 'appearance'
 
-  // Form fields
+  // Persona Form
+  let isCreating = false;
+  let editingProfile: any = null;
   let formName = "";
   let formInstructions = "";
-  let error = "";
-  let showDeleteModal = false;
-  let profileToDelete = null;
 
-  $: {
-    if ($settingsStore) {
-      profiles = $settingsStore.profiles || [];
-      activeProfileID = $settingsStore.activeProfileID || "";
+  // Advanced Settings
+  let advancedModel = "";
+  let advancedApiKey = "";
+  let isEditingApiKey = false;
+  let tempApiKey = "";
+  let modelDropdownOpen = false;
+
+  // Track original values for change detection
+  let originalApiKey = "";
+  let originalModel = "";
+
+  // Grid Settings
+  let gridMnemonics = "";
+  let gridNetwork = "";
+  let isEditingMnemonic = false;
+  let tempMnemonic = "";
+  let networkDropdownOpen = false;
+
+  // Track original grid values for change detection
+  let originalMnemonics = "";
+  let originalNetwork = "";
+
+  // Feedback
+  let error = "";
+  let successMsg = "";
+  let showDeleteModal = false;
+  let profileToDelete: any = null;
+
+  // Track modal visibility for latch
+  let prevShow = false;
+
+  const availableModels = [
+    "gemini-3-pro-preview",
+    "gemini-2.5-pro",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-robotics-er-1.5-preview",
+  ];
+
+  // --- Reactivity ---
+  $: if ($settingsStore) {
+    profiles = $settingsStore.profiles || [];
+    activeProfileID = $settingsStore.activeProfileID || "";
+  }
+
+  // Latch for opening modal
+  $: if (show !== prevShow) {
+    if (show && settingsStore) {
+      resetState();
+      if ($settingsStore) {
+        advancedApiKey = $settingsStore.geminiApiKey || "";
+        advancedModel = $settingsStore.model || "gemini-2.5-flash";
+        // Store original values
+        originalApiKey = advancedApiKey;
+        originalModel = advancedModel;
+
+        // Load grid settings
+        gridMnemonics = $settingsStore.mnemonics || "";
+        gridNetwork = $settingsStore.network || "main";
+        originalMnemonics = gridMnemonics;
+        originalNetwork = gridNetwork;
+      }
+    }
+    prevShow = show;
+  }
+
+  // Detect if config has changed
+  $: configHasChanged =
+    (advancedApiKey !== originalApiKey || advancedModel !== originalModel) &&
+    advancedApiKey.trim() !== "";
+
+  // Detect if grid config has changed
+  $: gridConfigHasChanged =
+    (gridMnemonics !== originalMnemonics || gridNetwork !== originalNetwork) &&
+    gridMnemonics.trim() !== "";
+
+  // --- Actions ---
+  function close() {
+    dispatch("close");
+    resetState();
+  }
+
+  function resetState() {
+    activeSection = "personas";
+    error = "";
+    modelDropdownOpen = false;
+    networkDropdownOpen = false;
+    cancelApiKeyEdit();
+    cancelEdit();
+  }
+
+  function switchSection(section: string) {
+    activeSection = section;
+    error = "";
+    modelDropdownOpen = false;
+    cancelEdit();
+  }
+
+  // Close dropdown when clicking outside
+  function handleDropdownClickOutside(event: MouseEvent) {
+    if (modelDropdownOpen) {
+      const target = event.target as HTMLElement;
+      if (!target.closest(".custom-select")) {
+        modelDropdownOpen = false;
+      }
+    }
+    if (networkDropdownOpen) {
+      const target = event.target as HTMLElement;
+      if (!target.closest(".custom-select")) {
+        networkDropdownOpen = false;
+      }
     }
   }
 
-  function close() {
-    dispatch("close");
-  }
-
+  // --- Persona Logic ---
   function startCreate() {
     isCreating = true;
     editingProfile = null;
@@ -47,7 +152,7 @@
     error = "";
   }
 
-  function startEdit(profile) {
+  function startEdit(profile: any) {
     isCreating = false;
     editingProfile = profile;
     formName = profile.name;
@@ -56,8 +161,8 @@
   }
 
   function cancelEdit() {
-    editingProfile = null;
     isCreating = false;
+    editingProfile = null;
     error = "";
   }
 
@@ -66,7 +171,6 @@
       error = "Name is required";
       return;
     }
-
     try {
       let newSettings;
       if (isCreating) {
@@ -80,555 +184,1361 @@
       }
       settingsStore.set(newSettings);
       cancelEdit();
-    } catch (e) {
-      error = e.message;
+    } catch (e: any) {
+      error = e.message || String(e);
     }
   }
 
-  function deleteProfile(profile) {
+  function confirmDelete(profile: any) {
     profileToDelete = profile;
     showDeleteModal = true;
   }
 
-  function cancelDelete() {
-    showDeleteModal = false;
-    profileToDelete = null;
-  }
-
-  async function confirmDelete() {
+  async function performDelete() {
     if (!profileToDelete) return;
-    showDeleteModal = false;
     try {
       const newSettings = await DeleteProfile(profileToDelete.id);
       settingsStore.set(newSettings);
-    } catch (e) {
-      error = e.message;
+      showDeleteModal = false;
+      profileToDelete = null;
+    } catch (e: any) {
+      error = e.message || String(e);
     }
-    profileToDelete = null;
   }
 
-  async function toggleActive(id) {
+  async function toggleActive(id: string) {
     try {
       if (activeProfileID === id) {
         await deactivateProfile();
       } else {
         await activateProfile(id);
       }
-    } catch (e) {
-      error = e.message;
+    } catch (e: any) {
+      error = e.message || String(e);
+    }
+  }
+
+  // --- Advanced Logic ---
+  function startApiKeyEdit() {
+    isEditingApiKey = true;
+    tempApiKey = "";
+  }
+
+  function saveApiKeyEdit() {
+    if (tempApiKey.trim()) advancedApiKey = tempApiKey.trim();
+    isEditingApiKey = false;
+    tempApiKey = "";
+  }
+
+  function cancelApiKeyEdit() {
+    isEditingApiKey = false;
+    tempApiKey = "";
+  }
+
+  async function saveAdvanced() {
+    if (!advancedApiKey.trim()) {
+      error = "API Key is required";
+      return;
+    }
+    try {
+      const newSettings = await UpdateAdvancedSettings(
+        advancedApiKey,
+        advancedModel,
+      );
+      settingsStore.set(newSettings);
+      // Update original values after successful save
+      originalApiKey = advancedApiKey;
+      originalModel = advancedModel;
+      error = "";
+    } catch (e: any) {
+      error = e.message || String(e);
+    }
+  }
+
+  // Grid Configuration Functions
+  function formatMnemonic(mnemonic: string): string {
+    if (!mnemonic) return "";
+    const words = mnemonic.trim().split(/\s+/);
+    if (words.length < 2) return mnemonic;
+    return `${words[0]} ${"*".repeat(20)} ${words[words.length - 1]}`;
+  }
+
+  function toggleNetworkDropdown() {
+    networkDropdownOpen = !networkDropdownOpen;
+  }
+
+  function selectNetwork(network: string) {
+    gridNetwork = network;
+    networkDropdownOpen = false;
+  }
+
+  function startMnemonicEdit() {
+    tempMnemonic = ""; // Start with empty box like API key
+    isEditingMnemonic = true;
+  }
+
+  function saveMnemonicEdit() {
+    gridMnemonics = tempMnemonic;
+    isEditingMnemonic = false;
+  }
+
+  function cancelMnemonicEdit() {
+    tempMnemonic = "";
+    isEditingMnemonic = false;
+  }
+
+  async function saveGridConfig() {
+    if (!gridMnemonics.trim()) {
+      error = "Mnemonic is required";
+      return;
+    }
+    try {
+      const newSettings = await UpdateGridSettings(gridMnemonics, gridNetwork);
+      settingsStore.set(newSettings);
+      // Update original values after successful save
+      originalMnemonics = gridMnemonics;
+      originalNetwork = gridNetwork;
+      error = "";
+    } catch (e: any) {
+      error = e.message || String(e);
+    }
+  }
+
+  function handleModalClick(event: MouseEvent) {
+    // Close dropdowns when clicking outside
+    if (modelDropdownOpen) {
+      modelDropdownOpen = false;
+    }
+    if (networkDropdownOpen) {
+      networkDropdownOpen = false;
     }
   }
 </script>
 
 {#if show}
-  <div class="modal-overlay" on:click={close} transition:fade>
-    <div class="modal" on:click|stopPropagation transition:fly={{ y: 20 }}>
-      <div class="header">
-        <h2>Persona Settings</h2>
-        <button class="close-btn" on:click={close}>&times;</button>
-      </div>
+  <div
+    class="overlay"
+    on:click={close}
+    on:keydown={(e) => e.key === "Escape" && close()}
+    transition:fade={{ duration: 200 }}
+  >
+    <div
+      class="settings-container"
+      on:click|stopPropagation={handleDropdownClickOutside}
+      on:keydown={(e) => e.key === "Escape" && close()}
+      transition:scale={{ start: 0.96, duration: 300, easing: cubicOut }}
+    >
+      <!-- Sidebar Navigation -->
+      <aside class="settings-sidebar">
+        <div class="sidebar-header">
+          <h2>Settings</h2>
+        </div>
+        <nav class="sidebar-nav">
+          <button
+            class="nav-item"
+            class:active={activeSection === "personas"}
+            on:click={() => switchSection("personas")}
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Personas</span>
+          </button>
+          <button
+            class="nav-item"
+            class:active={activeSection === "config"}
+            on:click={() => switchSection("config")}
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="3"></circle>
+              <path
+                d="M12 1v6m0 6v6m-9-9h6m6 0h6m-3.636-3.636l-4.243 4.243m0 4.243l4.243 4.243m-8.486 0l4.243-4.243m0-4.243L3.636 3.636"
+              ></path>
+            </svg>
+            <span>AI Configuration</span>
+          </button>
 
-      <div class="content">
-        {#if isCreating || editingProfile}
-          <div class="form" in:fade>
-            <h3>{isCreating ? "Create New Persona" : "Edit Persona"}</h3>
+          <button
+            class="nav-item"
+            class:active={activeSection === "grid"}
+            on:click={() => switchSection("grid")}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="14" y="14" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+            </svg>
+            <span>Grid Configuration</span>
+          </button>
+        </nav>
+      </aside>
 
-            <div class="form-group">
-              <label for="name">Persona Name</label>
-              <input
-                type="text"
-                id="name"
-                bind:value={formName}
-                placeholder="e.g., Rapid Responder, Thorough Investigator"
-              />
-            </div>
+      <!-- Main Content Area -->
+      <main class="settings-content">
+        <button class="close-btn" on:click={close}>
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
 
-            <div class="form-group">
-              <label for="instructions">Custom Instructions</label>
-              <textarea
-                id="instructions"
-                bind:value={formInstructions}
-                placeholder="Enter instructions for the agent (e.g., 'Always speak like a pirate', 'Focus on concise code examples')..."
-                rows="5"
-              ></textarea>
-              <p class="hint">
-                These instructions will be added to the system prompt.
-              </p>
-            </div>
+        {#if activeSection === "personas"}
+          <div class="section-content" in:fade={{ duration: 200 }}>
+            {#if isCreating || editingProfile}
+              <!-- Persona Editor -->
+              <div class="editor-panel" in:slide={{ duration: 200 }}>
+                <div class="editor-header">
+                  <h3>{isCreating ? "Create Persona" : "Edit Persona"}</h3>
+                  <p>Define the identity and behavior of your AI agent.</p>
+                </div>
 
-            {#if error}
-              <div class="error">{error}</div>
-            {/if}
+                <div class="form-grid">
+                  <div class="input-group">
+                    <label for="p-name">Display Name</label>
+                    <input
+                      id="p-name"
+                      type="text"
+                      bind:value={formName}
+                      placeholder="e.g. Code Reviewer"
+                      autocomplete="off"
+                    />
+                  </div>
 
-            <div class="actions">
-              <button class="btn secondary" on:click={cancelEdit}>Cancel</button
-              >
-              <button class="btn primary" on:click={saveProfile}>Save</button>
-            </div>
-          </div>
-        {:else}
-          <div class="profile-list" in:fade>
-            <div class="list-header">
-              <h3>Your Personas</h3>
-              <button class="btn primary small" on:click={startCreate}
-                >+ New Persona</button
-              >
-            </div>
+                  <div class="input-group full-width">
+                    <label for="p-inst">System Instructions</label>
+                    <textarea
+                      id="p-inst"
+                      bind:value={formInstructions}
+                      rows="6"
+                      placeholder="You are an expert software engineer..."
+                    ></textarea>
+                  </div>
+                </div>
 
-            {#if profiles.length === 0}
-              <div class="empty-state">
-                <p>No personas created yet.</p>
-                <p class="sub">
-                  Create a persona to customize the agent's behavior.
-                </p>
+                <div class="editor-actions">
+                  <button class="btn secondary" on:click={cancelEdit}
+                    >Cancel</button
+                  >
+                  <button class="btn primary" on:click={saveProfile}>
+                    {isCreating ? "Create Persona" : "Save Changes"}
+                  </button>
+                </div>
               </div>
             {:else}
-              <div class="profiles">
-                {#each profiles as profile (profile.id)}
-                  <div
-                    class="profile-item"
-                    class:active={activeProfileID === profile.id}
+              <!-- Persona Grid -->
+              <div class="section-header">
+                <h3>Your Personas</h3>
+                <p>Manage your AI agent personalities</p>
+              </div>
+
+              {#if profiles.length === 0}
+                <div class="empty-state">
+                  <svg
+                    width="64"
+                    height="64"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="empty-icon"
                   >
-                    <div class="profile-info">
-                      <div class="profile-name">
-                        {profile.name}
-                        {#if activeProfileID === profile.id}
-                          <span class="badge">Active</span>
-                        {/if}
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                  <h4>No personas yet</h4>
+                  <p>Create your first AI persona to get started</p>
+                  <button class="btn primary" on:click={startCreate}>
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Create Persona
+                  </button>
+                </div>
+              {:else}
+                <div class="persona-grid">
+                  {#each profiles as p (p.id)}
+                    <div
+                      class="persona-card"
+                      class:active={activeProfileID === p.id}
+                      transition:scale|local={{ duration: 200 }}
+                    >
+                      <div class="card-avatar">
+                        {p.name[0].toUpperCase()}
                       </div>
-                      <div class="profile-preview">
-                        {profile.instructions.slice(0, 50)}{profile.instructions
-                          .length > 50
-                          ? "..."
-                          : ""}
-                      </div>
-                    </div>
-                    <div class="profile-actions">
-                      <button
-                        class="btn-icon"
-                        class:active={activeProfileID === profile.id}
-                        title={activeProfileID === profile.id
-                          ? "Deactivate"
-                          : "Activate"}
-                        on:click={() => toggleActive(profile.id)}
-                      >
-                        {#if activeProfileID === profile.id}
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            ><rect
+                      <h4 class="card-name">{p.name}</h4>
+                      {#if activeProfileID !== p.id}
+                        <div class="inactive-indicator"></div>
+                      {/if}
+                      <div class="card-actions">
+                        <button
+                          class="action-btn"
+                          on:click={() => toggleActive(p.id)}
+                          title={activeProfileID === p.id
+                            ? "Deactivate"
+                            : "Activate"}
+                        >
+                          {#if activeProfileID === p.id}
+                            <svg
                               width="18"
                               height="18"
-                              x="3"
-                              y="3"
-                              rx="2"
-                            /></svg
-                          >
-                        {:else}
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                            >
+                              <circle cx="12" cy="12" r="10"></circle>
+                              <line x1="8" y1="12" x2="16" y2="12"></line>
+                            </svg>
+                          {:else}
+                            <svg
+                              width="18"
+                              height="18"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                            >
+                              <circle cx="12" cy="12" r="10"></circle>
+                              <polyline points="12 16 16 12 12 8"></polyline>
+                              <line x1="8" y1="12" x2="16" y2="12"></line>
+                            </svg>
+                          {/if}
+                        </button>
+                        <button
+                          class="action-btn"
+                          on:click={() => startEdit(p)}
+                          title="Edit"
+                        >
                           <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
+                            width="18"
+                            height="18"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
                             stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            ><polygon points="6 3 20 12 6 21 6 3" /></svg
                           >
-                        {/if}
-                      </button>
-                      <button
-                        class="btn-icon"
-                        title="Edit"
-                        on:click={() => startEdit(profile)}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          ><path
-                            d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"
-                          /><path d="m15 5 4 4" /></svg
+                            <path d="M12 20h9"></path>
+                            <path
+                              d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"
+                            ></path>
+                          </svg>
+                        </button>
+                        <button
+                          class="action-btn delete"
+                          on:click={() => confirmDelete(p)}
+                          title="Delete"
                         >
-                      </button>
-                      <button
-                        class="btn-icon delete"
-                        title="Delete"
-                        on:click={() => deleteProfile(profile)}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          ><path d="M3 6h18" /><path
-                            d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"
-                          /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line
-                            x1="10"
-                            x2="10"
-                            y1="11"
-                            y2="17"
-                          /><line x1="14" x2="14" y1="11" y2="17" /></svg
-                        >
-                      </button>
+                          <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                          >
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path
+                              d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                            ></path>
+                          </svg>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                {/each}
-              </div>
+                  {/each}
+                </div>
+              {/if}
             {/if}
           </div>
+
+          <!-- FAB for New Persona -->
+          {#if !isCreating && !editingProfile && profiles.length > 0}
+            <button
+              class="fab"
+              on:click={startCreate}
+              transition:scale={{ duration: 200 }}
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
+          {/if}
+        {:else if activeSection === "config"}
+          <div class="section-content" in:fade={{ duration: 200 }}>
+            <div class="section-header">
+              <h3>AI Configuration</h3>
+              <p>Configure your AI model and API settings</p>
+            </div>
+
+            <div class="config-form">
+              <div class="input-group">
+                <label for="adv-model">AI Model</label>
+                <div class="custom-select" class:open={modelDropdownOpen}>
+                  <button
+                    type="button"
+                    class="select-trigger"
+                    on:click={() => (modelDropdownOpen = !modelDropdownOpen)}
+                  >
+                    <span>{advancedModel || "Select a model"}</span>
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 12 12"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      class="select-arrow"
+                      class:rotated={modelDropdownOpen}
+                    >
+                      <path d="M2 4l4 4 4-4" />
+                    </svg>
+                  </button>
+                  {#if modelDropdownOpen}
+                    <div
+                      class="select-dropdown"
+                      transition:slide={{ duration: 200 }}
+                    >
+                      {#each availableModels as m}
+                        <button
+                          type="button"
+                          class="select-option"
+                          class:selected={advancedModel === m}
+                          on:click={() => {
+                            advancedModel = m;
+                            modelDropdownOpen = false;
+                          }}
+                        >
+                          {m}
+                        </button>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+              </div>
+
+              <div class="input-group">
+                <label for="adv-key">Gemini API Key</label>
+                {#if isEditingApiKey}
+                  <div class="api-key-edit">
+                    <input
+                      id="adv-key"
+                      type="text"
+                      bind:value={tempApiKey}
+                      placeholder="Paste API Key here"
+                    />
+                    <div class="edit-actions">
+                      <button
+                        class="btn small primary"
+                        on:click={saveApiKeyEdit}>OK</button
+                      >
+                      <button
+                        class="btn small secondary"
+                        on:click={cancelApiKeyEdit}>Cancel</button
+                      >
+                    </div>
+                  </div>
+                {:else}
+                  <div class="api-key-display">
+                    <input
+                      type="text"
+                      value={advancedApiKey.length > 8
+                        ? advancedApiKey.slice(0, 4) +
+                          "*".repeat(Math.max(0, advancedApiKey.length - 8)) +
+                          advancedApiKey.slice(-4)
+                        : "*".repeat(advancedApiKey.length)}
+                      disabled
+                    />
+                    <button
+                      class="btn small secondary"
+                      on:click={startApiKeyEdit}>Change</button
+                    >
+                  </div>
+                {/if}
+                <p class="helper-text">
+                  Your API key is stored securely on your local device.
+                </p>
+              </div>
+
+              <div class="form-actions">
+                <button
+                  class="btn primary large"
+                  on:click={saveAdvanced}
+                  disabled={!configHasChanged}>Save Configuration</button
+                >
+              </div>
+            </div>
+          </div>
         {/if}
-      </div>
+
+        <!-- Grid Configuration Section -->
+        {#if activeSection === "grid"}
+          <div class="section-content">
+            <div class="section-header">
+              <h3>Grid Configuration</h3>
+              <p>Configure your ThreeFold Grid connection</p>
+            </div>
+
+            <div class="config-form">
+              <!-- Network Dropdown -->
+              <div class="input-group">
+                <label for="grid-network">Network</label>
+                <div class="custom-select" class:open={networkDropdownOpen}>
+                  <button
+                    type="button"
+                    class="select-trigger"
+                    on:click={() =>
+                      (networkDropdownOpen = !networkDropdownOpen)}
+                  >
+                    <span>{gridNetwork}</span>
+                    <svg
+                      class="select-arrow"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 12 12"
+                      fill="none"
+                    >
+                      <path
+                        d="M2 4L6 8L10 4"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                  {#if networkDropdownOpen}
+                    <div
+                      class="select-dropdown"
+                      transition:slide={{ duration: 200 }}
+                    >
+                      {#each ["main", "test", "dev", "qa"] as net}
+                        <button
+                          type="button"
+                          class="select-option"
+                          class:selected={gridNetwork === net}
+                          on:click={() => {
+                            gridNetwork = net;
+                            networkDropdownOpen = false;
+                          }}
+                        >
+                          {net}
+                        </button>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+              </div>
+
+              <!-- Mnemonic Display/Edit -->
+              <div class="input-group">
+                <label for="grid-mnemonic">Mnemonic Phrase</label>
+                {#if isEditingMnemonic}
+                  <div class="api-key-edit">
+                    <input
+                      id="grid-mnemonic"
+                      type="text"
+                      bind:value={tempMnemonic}
+                      placeholder="Enter your mnemonic phrase"
+                    />
+                    <div class="edit-actions">
+                      <button
+                        class="btn small primary"
+                        on:click={saveMnemonicEdit}>OK</button
+                      >
+                      <button
+                        class="btn small secondary"
+                        on:click={cancelMnemonicEdit}>Cancel</button
+                      >
+                    </div>
+                  </div>
+                {:else}
+                  <div class="api-key-display">
+                    <input
+                      type="text"
+                      value={formatMnemonic(gridMnemonics)}
+                      disabled
+                    />
+                    <button
+                      class="btn small secondary"
+                      on:click={startMnemonicEdit}>Change</button
+                    >
+                  </div>
+                {/if}
+                <p class="helper-text">
+                  Your mnemonic is stored securely on your local device.
+                </p>
+              </div>
+
+              <!-- Save Button -->
+              <div class="form-actions">
+                <button
+                  class="btn primary large"
+                  on:click={saveGridConfig}
+                  disabled={!gridConfigHasChanged}>Save Configuration</button
+                >
+              </div>
+            </div>
+          </div>
+        {/if}
+
+        {#if error}
+          <div class="error-toast" transition:slide>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="3"
+            >
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            {error}
+          </div>
+        {/if}
+      </main>
     </div>
   </div>
 {/if}
 
 <!-- Delete Confirmation Modal -->
 {#if showDeleteModal}
-  <div class="modal-overlay" on:click={cancelDelete} transition:fade>
-    <div class="modal delete-modal" on:click|stopPropagation transition:fade>
-      <h2>Confirm Delete</h2>
+  <div class="modal-overlay" transition:fade>
+    <div class="confirm-dialog" transition:scale={{ start: 0.9 }}>
+      <h3>Delete Persona?</h3>
       <p>
-        Are you sure you want to delete the persona "{profileToDelete?.name}"?
+        Are you sure you want to delete "<strong>{profileToDelete?.name}</strong
+        >"? This action cannot be undone.
       </p>
-      <p class="warning">This action cannot be undone.</p>
       <div class="modal-actions">
-        <button class="btn secondary" on:click={cancelDelete}>Cancel</button>
-        <button class="btn danger" on:click={confirmDelete}>Delete</button>
+        <button
+          class="btn secondary"
+          on:click={() => {
+            showDeleteModal = false;
+            profileToDelete = null;
+          }}>Cancel</button
+        >
+        <button class="btn danger" on:click={performDelete}>Delete</button>
       </div>
     </div>
   </div>
 {/if}
 
 <style>
-  .modal-overlay {
+  /* Overlay */
+  .overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    z-index: 999;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
-    backdrop-filter: blur(4px);
+    padding: 2rem;
   }
 
-  .modal {
-    background: var(--bg-secondary);
-    border-radius: 1rem;
-    width: 90%;
-    max-width: 600px;
-    max-height: 85vh;
+  /* Main Container */
+  .settings-container {
+    width: 100%;
+    max-width: 1200px;
+    height: 85vh;
+    max-height: 800px;
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
     display: flex;
-    flex-direction: column;
+    overflow: hidden;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     border: 1px solid var(--border);
   }
 
-  .header {
-    padding: 1.5rem;
-    border-bottom: 1px solid var(--border);
+  /* Sidebar */
+  .settings-sidebar {
+    width: 240px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    flex-shrink: 0;
   }
 
-  .header h2 {
+  .sidebar-header {
+    padding: 2rem 1.5rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-header h2 {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 1.5rem;
+    font-weight: 700;
     color: var(--text-primary);
+  }
+
+  .sidebar-nav {
+    padding: 1rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .nav-item:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
+
+  .nav-item.active {
+    background: var(--bg-tertiary);
+    color: var(--accent);
+  }
+
+  .nav-item.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--accent-gradient);
+    border-radius: 0 2px 2px 0;
+  }
+
+  .nav-item svg {
+    flex-shrink: 0;
+  }
+
+  /* Main Content */
+  .settings-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
   }
 
   .close-btn {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
     background: none;
     border: none;
     color: var(--text-secondary);
-    font-size: 1.5rem;
     cursor: pointer;
-    padding: 0;
-    line-height: 1;
+    padding: 0.5rem;
+    border-radius: var(--radius-md);
+    transition: all 0.2s;
+    z-index: 10;
   }
 
   .close-btn:hover {
+    background: var(--bg-tertiary);
     color: var(--text-primary);
   }
 
-  .content {
-    padding: 1.5rem;
+  .section-content {
+    flex: 1;
     overflow-y: auto;
+    padding: 2rem;
   }
 
-  /* List View */
-  .list-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
+  .section-header {
+    margin-bottom: 2rem;
   }
 
-  .list-header h3 {
+  .section-header h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .section-header p {
     margin: 0;
     font-size: 1rem;
     color: var(--text-secondary);
   }
 
-  .profiles {
+  /* Persona Grid */
+  .persona-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .persona-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 2rem 1.5rem;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .profile-item {
-    background: var(--bg-primary);
-    border: 1px solid var(--border);
-    border-radius: 0.75rem;
-    padding: 1rem;
-    display: flex;
-    justify-content: space-between;
     align-items: center;
+    text-align: center;
     transition: all 0.2s;
+    position: relative;
   }
 
-  .profile-item.active {
-    border-color: var(--accent);
-    background: rgba(59, 130, 246, 0.05);
+  .persona-card:hover {
+    border-color: var(--text-secondary);
   }
 
-  .profile-info {
-    flex: 1;
+  .persona-card.active {
+    border: 1.5px solid rgba(59, 130, 246, 0.4);
+    box-shadow: none;
   }
 
-  .profile-name {
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 0.25rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+  .persona-card.active::before {
+    content: "";
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 12px;
+    height: 12px;
+    background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+    border-radius: 50%;
+    box-shadow:
+      0 0 12px rgba(59, 130, 246, 0.8),
+      0 0 20px rgba(6, 182, 212, 0.6);
+    animation: pulse 2s ease-in-out infinite;
   }
 
-  .badge {
-    background: var(--accent);
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.7;
+      transform: scale(1.1);
+    }
+  }
+
+  .inactive-indicator {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 12px;
+    height: 12px;
+    background: var(--text-secondary);
+    border-radius: 50%;
+    opacity: 0.3;
+  }
+
+  .card-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--accent-gradient);
     color: white;
-    font-size: 0.7rem;
-    padding: 0.1rem 0.4rem;
-    border-radius: 1rem;
-    text-transform: uppercase;
+    font-size: 1.75rem;
     font-weight: 700;
-  }
-
-  .profile-preview {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 300px;
-  }
-
-  .profile-actions {
-    display: flex;
-    gap: 0.5rem;
-  }
-
-  .btn-icon {
-    background: var(--bg-tertiary);
-    border: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 0.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+
+  .card-name {
+    margin: 0 0 0.75rem 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .card-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: auto;
+  }
+
+  .action-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0.5rem;
+    color: var(--text-secondary);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .action-btn:hover {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-color: var(--accent);
+  }
+
+  .action-btn.delete:hover {
+    background: var(--error);
+    color: white;
+    border-color: var(--error);
+  }
+
+  /* FAB */
+  .fab {
+    position: absolute;
+    bottom: 2rem;
+    right: 2rem;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--accent-gradient);
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 16px rgba(59, 130, 246, 0.4);
+    transition: all 0.3s;
+    z-index: 10;
+  }
+
+  .fab:hover {
+    transform: scale(1.1);
+    box-shadow: 0 12px 24px rgba(59, 130, 246, 0.5);
+  }
+
+  /* Empty State */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    text-align: center;
+  }
+
+  .empty-icon {
+    color: var(--text-secondary);
+    opacity: 0.4;
+    margin-bottom: 1.5rem;
+  }
+
+  .empty-state h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .empty-state p {
+    margin: 0 0 2rem 0;
     font-size: 1rem;
     color: var(--text-secondary);
   }
 
-  .btn-icon:hover {
-    background: var(--border);
+  /* Editor Panel */
+  .editor-panel {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    position: relative;
+    z-index: 20;
+  }
+
+  .editor-header {
+    margin-bottom: 2rem;
+  }
+
+  .editor-header h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.5rem;
+    font-weight: 700;
     color: var(--text-primary);
-    transform: translateY(-1px);
   }
 
-  .btn-icon:active {
-    transform: translateY(0);
-  }
-
-  .btn-icon.active {
-    color: var(--accent);
-    background: rgba(59, 130, 246, 0.1);
-  }
-
-  .btn-icon.active:hover {
-    background: rgba(59, 130, 246, 0.15);
-  }
-
-  .btn-icon.delete:hover {
-    background: rgba(239, 68, 68, 0.15);
-    color: var(--error);
-  }
-
-  .empty-state {
-    text-align: center;
-    padding: 3rem 1rem;
+  .editor-header p {
+    margin: 0;
+    font-size: 1rem;
     color: var(--text-secondary);
-    background: var(--bg-primary);
-    border-radius: 0.75rem;
-    border: 1px dashed var(--border);
   }
 
-  .empty-state .sub {
-    font-size: 0.875rem;
-    margin-top: 0.5rem;
-    opacity: 0.7;
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
   }
 
-  /* Form View */
-  .form h3 {
-    margin: 0 0 1.5rem 0;
-    color: var(--text-primary);
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
   }
 
-  .form-group {
-    margin-bottom: 1.5rem;
+  .input-group.full-width {
+    grid-column: 1 / -1;
   }
 
   label {
-    display: block;
-    margin-bottom: 0.5rem;
-    color: var(--text-secondary);
     font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
   input,
   textarea {
-    width: 100%;
-    padding: 0.75rem;
-    border-radius: 0.5rem;
+    background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    background: var(--bg-primary);
     color: var(--text-primary);
-    font-size: 1rem;
+    padding: 0.875rem 1rem;
+    border-radius: var(--radius-md);
     font-family: inherit;
-  }
-
-  textarea {
-    resize: vertical;
+    font-size: 1rem;
+    width: 100%;
+    outline: none;
+    transition: all 0.2s;
   }
 
   input:focus,
   textarea:focus {
-    outline: none;
     border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow, rgba(59, 130, 246, 0.2));
   }
 
-  .hint {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    margin-top: 0.5rem;
+  input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
-  .actions {
+  textarea {
+    resize: vertical;
+    min-height: 120px;
+  }
+
+  .editor-actions {
     display: flex;
-    justify-content: flex-end;
     gap: 1rem;
-    margin-top: 2rem;
+    justify-content: flex-end;
   }
 
-  .error {
-    color: var(--error);
-    background: rgba(239, 68, 68, 0.1);
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    margin-bottom: 1rem;
-    font-size: 0.875rem;
+  /* Config Form */
+  .config-form {
+    max-width: 600px;
   }
 
-  .btn {
-    padding: 0.625rem 1.25rem;
-    border-radius: 0.5rem;
-    font-weight: 600;
+  .config-form .input-group {
+    margin-bottom: 2rem;
+  }
+
+  /* Custom Select */
+  .custom-select {
+    position: relative;
+    width: 100%;
+  }
+
+  .select-trigger {
+    width: 100%;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 0.875rem 1rem;
+    border-radius: var(--radius-md);
+    font-family: inherit;
+    font-size: 1rem;
+    text-align: left;
     cursor: pointer;
-    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     transition: all 0.2s;
-    font-size: 0.875rem;
   }
 
-  .btn.small {
-    padding: 0.4rem 0.8rem;
-    font-size: 0.8rem;
+  .select-trigger:hover {
+    border-color: var(--text-secondary);
   }
 
-  .btn.primary {
+  .custom-select.open .select-trigger {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow, rgba(59, 130, 246, 0.2));
+  }
+
+  .select-arrow {
+    transition: transform 0.2s;
+    color: var(--text-secondary);
+  }
+
+  .select-arrow.rotated {
+    transform: rotate(180deg);
+  }
+
+  .select-dropdown {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 0;
+    right: 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+  }
+
+  .select-option {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    padding: 0.875rem 1rem;
+    font-family: inherit;
+    font-size: 1rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .select-option:hover {
+    background: var(--bg-tertiary);
+  }
+
+  .select-option.selected {
     background: var(--accent);
     color: white;
   }
 
-  .btn.primary:hover {
+  .select-option.selected:hover {
     background: var(--accent-hover);
   }
 
-  .btn.secondary {
-    background: transparent;
+  /* API Key */
+  .api-key-display,
+  .api-key-edit {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+  }
+
+  .api-key-display input,
+  .api-key-edit input {
+    flex: 1;
+  }
+
+  .edit-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .helper-text {
+    font-size: 0.875rem;
     color: var(--text-secondary);
+    margin-top: 0.5rem;
+  }
+
+  .form-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    position: relative;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+    font-size: 0.95rem;
+  }
+
+  .btn.small {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .btn.large {
+    padding: 1rem 2rem;
+    font-size: 1rem;
+  }
+
+  .btn.primary {
+    background: var(--accent-gradient);
+    color: white;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+
+  .btn.primary:hover {
+    filter: brightness(1.1);
+  }
+
+  .btn.primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn.primary:disabled:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn.secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
     border: 1px solid var(--border);
   }
 
   .btn.secondary:hover {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border-color: var(--accent);
   }
 
   .btn.danger {
-    background: var(--error);
-    color: white;
+    background-color: #7f1d1d;
+    color: #fca5a5;
+    border: 1px solid #991b1b;
   }
 
   .btn.danger:hover {
-    background: #dc2626;
+    background-color: #991b1b;
+    color: #fecaca;
+  }
+
+  /* Error Toast */
+  .error-toast {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--error);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    font-weight: 600;
+    font-size: 0.95rem;
+    z-index: 100;
   }
 
   /* Delete Modal */
-  .modal h2 {
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+  }
+
+  .confirm-dialog {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border);
+  }
+
+  .confirm-dialog h3 {
     margin: 0 0 1rem 0;
     color: var(--text-primary);
     font-size: 1.25rem;
+    font-weight: 700;
   }
 
-  .modal p {
-    margin: 0 0 0.5rem 0;
+  .confirm-dialog p {
+    margin: 0 0 1.5rem 0;
     color: var(--text-secondary);
-    line-height: 1.5;
-  }
-
-  .modal .warning {
-    color: var(--error);
-    font-size: 0.875rem;
-    margin-bottom: 1.5rem;
+    line-height: 1.6;
   }
 
   .modal-actions {
@@ -637,10 +1547,21 @@
     justify-content: flex-end;
   }
 
-  /* Delete confirmation modal specific styling */
-  .delete-modal {
-    padding: 2rem;
-    max-width: 400px;
-    max-height: none;
+  /* Scrollbar */
+  .section-content::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .section-content::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .section-content::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+  }
+
+  .section-content::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
   }
 </style>

@@ -644,7 +644,21 @@
             >
             Aborting...
           {:else}
-            ⏹ Abort
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+            Abort
           {/if}
         </button>
       {:else}
@@ -734,7 +748,7 @@
   .logo {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.5rem;
   }
 
   .logo span {
@@ -798,8 +812,9 @@
     color: #ef4444; /* Red-500 */
   }
   .logo img {
-    height: 24px;
+    height: 28px;
     width: auto;
+    border-radius: 6px;
   }
 
   .controls {
@@ -900,8 +915,6 @@
   .send-btn,
   .abort-btn-input {
     padding: 0.75rem 1.5rem;
-    border-radius: var(--radius-md);
-    border: none;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -909,10 +922,12 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: white;
   }
 
   .send-btn {
+    border-radius: var(--radius-md);
+    border: none;
+    color: white;
     background: var(--accent-gradient);
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
   }
@@ -936,13 +951,17 @@
   }
 
   .abort-btn-input {
-    background: var(--bg-tertiary);
-    color: var(--error);
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: rgba(127, 29, 29, 0.3);
+    color: #fca5a5;
+    border: 1px solid rgba(153, 27, 27, 0.5);
+    border-radius: 0.75rem;
+    transition: all 0.2s;
   }
 
   .abort-btn-input:hover:not(:disabled) {
-    background: rgba(239, 68, 68, 0.1);
+    background: rgba(153, 27, 27, 0.4);
+    color: #fecaca;
+    border-color: #991b1b;
   }
 
   /* Messages Container Adjustment for Fixed Header */
@@ -1063,12 +1082,14 @@
   }
 
   .btn.danger {
-    background: var(--error);
-    color: white;
+    background-color: #7f1d1d;
+    color: #fca5a5;
+    border: 1px solid #991b1b;
   }
 
   .btn.danger:hover {
-    background: #dc2626;
+    background-color: #991b1b;
+    color: #fecaca;
   }
 
   /* Error Modal */
@@ -1079,6 +1100,16 @@
   .error-icon {
     font-size: 3rem;
     margin-bottom: 1rem;
+  }
+
+  .logo span {
+    font-size: 1.35rem;
+    font-weight: 800;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.02em;
   }
 
   .error-text {

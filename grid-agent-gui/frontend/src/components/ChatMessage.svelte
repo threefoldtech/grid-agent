@@ -140,7 +140,20 @@
     {#if message.steps && message.steps.length > 0}
       <div class="steps-container">
         <button class="steps-toggle" on:click={() => (showSteps = !showSteps)}>
-          <span class="toggle-icon">{showSteps ? "▼" : "▶"}</span>
+          <svg
+            class="toggle-icon"
+            class:rotated={showSteps}
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
           Show workflow ({visibleStepCount}
           {visibleStepCount === 1 ? "step" : "steps"})
         </button>
@@ -342,7 +355,12 @@
   }
 
   .toggle-icon {
-    font-size: 0.75rem;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+
+  .toggle-icon.rotated {
+    transform: rotate(90deg);
   }
 
   .steps {

@@ -7,8 +7,15 @@ type Provider interface {
 	// SendMessage sends a message and returns the response
 	SendMessage(ctx context.Context, message string) (*Response, error)
 
-	// GetHistory returns the conversation history
+	// GetHistory returns the conversation history in generic format
 	GetHistory() []Message
+
+	// GetRawHistory returns the provider-specific history object
+	GetRawHistory() interface{}
+
+	// AppendSystemNotice adds a system notice to the history
+	// Returns error if the provider doesn't support this operation
+	AppendSystemNotice(message string) error
 
 	// Close closes the provider and releases resources
 	Close() error
@@ -45,4 +52,5 @@ type Config struct {
 	MaxRetries       int
 	MaxJSONRetries   int
 	RegisteredTools  []string // Tool names for dynamic response parsing
+	History          any      // Underlying history object to restore session (provider specific)
 }

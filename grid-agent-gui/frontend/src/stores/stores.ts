@@ -11,6 +11,7 @@ export interface Settings {
     mnemonics: string;
     network: string;
     geminiApiKey: string;
+    model: string;
     theme: string;
     isConfigured: boolean;
     profiles: Profile[];
@@ -22,6 +23,7 @@ export const settingsStore = writable<Settings>({
     mnemonics: '',
     network: 'main',
     geminiApiKey: '',
+    model: '',
     theme: 'dark',
     isConfigured: false,
     profiles: [],
