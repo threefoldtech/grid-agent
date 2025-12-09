@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/rs/zerolog/log"
@@ -49,7 +50,10 @@ var deleteWorkerCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		cluster, err := command.GetK8sCluster(cmd.Context(), t, name)
+		// Derive project name for Kubernetes cluster
+		projectName := fmt.Sprintf("kubernetes/%s", name)
+
+		cluster, err := command.GetK8sCluster(cmd.Context(), t, projectName, name)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

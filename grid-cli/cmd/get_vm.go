@@ -15,7 +15,19 @@ import (
 var getVMCmd = &cobra.Command{
 	Use:   "vm <vm-name>",
 	Short: "Get deployed vm",
-	Args:  cobra.ExactArgs(1),
+	Long: `Get details of a deployed virtual machine by name.
+
+Requires the project name to locate the VM. The project name is typically
+'vm/{vmname}' for VMs deployed with default settings, or a custom name if
+specified during deployment.
+
+Examples:
+  # Get VM with default project name
+  tfcmd get vm myvm --project-name vm/myvm
+  
+  # Get VM with custom project name
+  tfcmd get vm webserver --project-name production`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		noColor, err := cmd.Flags().GetBool("no-color")
 		if err != nil {
@@ -47,7 +59,12 @@ var getVMCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		vm, err := command.GetVM(cmd.Context(), t, args[0])
+		projectName, err := cmd.Flags().GetString("project-name")
+		if err != nil {
+			log.Fatal().Err(err).Send()
+		}
+
+		vm, err := command.GetVM(cmd.Context(), t, projectName, args[0])
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -61,4 +78,10 @@ var getVMCmd = &cobra.Command{
 
 func init() {
 	getCmd.AddCommand(getVMCmd)
+
+	getVMCmd.Flags().StringP("project-name", "p", "", "project name of the VM")
+	err := getVMCmd.MarkFlagRequired("project-name")
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
 }

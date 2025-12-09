@@ -15,7 +15,14 @@ import (
 var getGatewayNameCmd = &cobra.Command{
 	Use:   "name <gateway-name>",
 	Short: "Get deployed gateway name",
-	Args:  cobra.ExactArgs(1),
+	Long: `Get details of a deployed gateway name proxy by name.
+
+Requires the project name to locate the gateway.
+
+Examples:
+  # Get gateway name proxy
+  tfcmd get gateway name mygateway --project-name myproject`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		noColor, err := cmd.Flags().GetBool("no-color")
 		if err != nil {
@@ -48,7 +55,12 @@ var getGatewayNameCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		gateway, err := command.GetGatewayName(cmd.Context(), t, args[0])
+		projectName, err := cmd.Flags().GetString("project-name")
+		if err != nil {
+			log.Fatal().Err(err).Send()
+		}
+
+		gateway, err := command.GetGatewayName(cmd.Context(), t, projectName, args[0])
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -62,4 +74,10 @@ var getGatewayNameCmd = &cobra.Command{
 
 func init() {
 	getGatewayCmd.AddCommand(getGatewayNameCmd)
+
+	getGatewayNameCmd.Flags().StringP("project-name", "p", "", "project name of the gateway")
+	err := getGatewayNameCmd.MarkFlagRequired("project-name")
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
 }

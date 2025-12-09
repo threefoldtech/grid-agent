@@ -203,6 +203,26 @@ var deployVMCmd = &cobra.Command{
 			}
 		}
 
+		networkName, err := cmd.Flags().GetString("network")
+		if err != nil {
+			return err
+		}
+
+		projectName, err := cmd.Flags().GetString("project-name")
+		if err != nil {
+			return err
+		}
+
+		// Validate: --network requires --project-name
+		if networkName != "" && projectName == "" {
+			return fmt.Errorf("--project-name is required when using --network")
+		}
+
+		// Default project name if not provided
+		if projectName == "" {
+			projectName = fmt.Sprintf("vm/%s", name)
+		}
+
 		cfg, err := config.GetUserConfig()
 		if err != nil {
 			log.Fatal().Err(err).Send()
@@ -246,7 +266,7 @@ var deployVMCmd = &cobra.Command{
 				Entrypoint:     entrypoint,
 				MyceliumIPSeed: seed,
 			}
-			err = executeVMLight(cmd.Context(), t, vm, node, farm, disks, volumes)
+			err = executeVMLight(cmd.Context(), t, vm, node, farm, disks, volumes, projectName, networkName)
 			if err == nil {
 				return nil
 			}
@@ -270,7 +290,7 @@ var deployVMCmd = &cobra.Command{
 			MyceliumIPSeed: seed,
 			Planetary:      ygg,
 		}
-		err = executeVM(cmd.Context(), t, vm, node, farm, disks, volumes)
+		err = executeVM(cmd.Context(), t, vm, node, farm, disks, volumes, projectName, networkName)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -297,6 +317,8 @@ func init() {
 	deployVMCmd.Flags().Uint32("node", 0, "node id vm should be deployed on")
 	deployVMCmd.Flags().Uint64("farm", 1, "farm id vm should be deployed on")
 	deployVMCmd.MarkFlagsMutuallyExclusive("node", "farm")
+	deployVMCmd.Flags().String("network", "", "name of existing network to deploy VM on. If not specified, a new network will be created default to '{vmname}network'")
+	deployVMCmd.Flags().String("project-name", "", "project name for the VM deployment. Defaults to 'vm/{vmname}' if not specified. Required when using --network")
 
 	deployVMCmd.Flags().Uint8("cpu", 1, "number of cpu units")
 	deployVMCmd.Flags().Uint64("memory", 1, "memory size in gb")
@@ -321,7 +343,7 @@ func executeVM(
 	ctx context.Context, t deployer.TFPluginClient,
 	vm workloads.VM,
 	node uint32,
-	farm uint64, diskSpecs, volumeSpecs []DiskSpec,
+	farm uint64, diskSpecs, volumeSpecs []DiskSpec, projectName, networkName string,
 ) error {
 	// Build disk mounts from specifications
 	diskMounts := make([]workloads.Disk, 0, len(diskSpecs))
@@ -382,7 +404,7 @@ func executeVM(
 	}
 
 	vm.NodeID = node
-	resVM, err := command.DeployVM(ctx, t, vm, diskMounts, volumeMounts)
+	resVM, err := command.DeployVM(ctx, t, vm, diskMounts, volumeMounts, projectName, networkName)
 	if err != nil {
 		return err
 	}
@@ -407,7 +429,7 @@ func executeVMLight(
 	ctx context.Context, t deployer.TFPluginClient,
 	vm workloads.VMLight,
 	node uint32,
-	farm uint64, diskSpecs, volumeSpecs []DiskSpec,
+	farm uint64, diskSpecs, volumeSpecs []DiskSpec, projectName, networkName string,
 ) error {
 	// Build disk mounts from specifications
 	diskMounts := make([]workloads.Disk, 0, len(diskSpecs))
@@ -468,7 +490,7 @@ func executeVMLight(
 	}
 
 	vm.NodeID = node
-	resVM, err := command.DeployVMLight(ctx, t, vm, diskMounts, volumeMounts)
+	resVM, err := command.DeployVMLight(ctx, t, vm, diskMounts, volumeMounts, projectName, networkName)
 	if err != nil {
 		return err
 	}

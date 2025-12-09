@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"slices"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -14,31 +15,78 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
-// DeployVM deploys a vm with mounts
-func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, diskMounts []workloads.Disk, volumeMounts []workloads.Volume) (workloads.VM, error) {
-	networkName := fmt.Sprintf("%snetwork", vm.Name)
-	projectName := fmt.Sprintf("vm/%s", vm.Name)
-	network, err := buildNetwork(networkName, projectName, []uint32{vm.NodeID}, len(vm.MyceliumIPSeed) != 0)
-	if err != nil {
-		return workloads.VM{}, err
+// DeployVM deploys a VM with mounts
+func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, diskMounts []workloads.Disk, volumeMounts []workloads.Volume, projectName, existingNetworkName string) (workloads.VM, error) {
+	var networkName string
+	var network workloads.ZNet
+	var err error
+
+	if existingNetworkName != "" {
+		// Use existing network
+		networkName = existingNetworkName
+		log.Info().Msgf("loading existing network '%s'", networkName)
+
+		// Load network using GetNetwork helper
+		network, err = GetNetwork(ctx, t, projectName, networkName)
+		if err != nil {
+			return workloads.VM{}, errors.Wrapf(err, "failed to load existing network '%s'", networkName)
+		}
+
+		// Add VM node to network if not already present
+		if !slices.Contains(network.Nodes, vm.NodeID) {
+			log.Info().Msgf("adding node %d to network '%s'", vm.NodeID, networkName)
+			network.Nodes = append(network.Nodes, vm.NodeID)
+
+			// Add mycelium key if VM uses mycelium
+			if len(vm.MyceliumIPSeed) != 0 {
+				key, err := workloads.RandomMyceliumKey()
+				if err != nil {
+					return workloads.VM{}, err
+				}
+				network.MyceliumKeys[vm.NodeID] = key
+			}
+
+			// Redeploy network with new node
+			log.Info().Msg("updating network")
+			err = t.NetworkDeployer.Deploy(ctx, &network)
+			if err != nil {
+				return workloads.VM{}, errors.Wrapf(err, "failed to update network with node %d", vm.NodeID)
+			}
+		}
+	} else {
+		// Create new network - derive name from project name
+		// Strip path separators from project name (e.g., "vm/myapp" -> "myapp")
+		baseName := projectName
+		if idx := strings.LastIndex(projectName, "/"); idx != -1 {
+			baseName = projectName[idx+1:]
+		}
+		networkName = fmt.Sprintf("%snetwork", baseName)
+
+		network, err = buildNetwork(networkName, projectName, []uint32{vm.NodeID}, len(vm.MyceliumIPSeed) != 0)
+		if err != nil {
+			return workloads.VM{}, err
+		}
+
+		log.Info().Msg("deploying network")
+		err = t.NetworkDeployer.Deploy(ctx, &network)
+		if err != nil {
+			return workloads.VM{}, errors.Wrapf(err, "failed to deploy network on node %d", vm.NodeID)
+		}
 	}
 
 	vm.NetworkName = networkName
 	dl := workloads.NewDeployment(vm.Name, vm.NodeID, projectName, nil, networkName, diskMounts, nil, []workloads.VM{vm}, nil, nil, volumeMounts)
 
-	log.Info().Msg("deploying network")
-	err = t.NetworkDeployer.Deploy(ctx, &network)
-	if err != nil {
-		return workloads.VM{}, errors.Wrapf(err, "failed to deploy network on node %d", vm.NodeID)
-	}
-
 	log.Info().Msg("deploying vm")
 	err = t.DeploymentDeployer.Deploy(ctx, &dl)
 	if err != nil {
-		log.Warn().Msg("error happened while deploying. removing network")
-		revertErr := t.NetworkDeployer.Cancel(ctx, &network)
-		if revertErr != nil {
-			log.Error().Err(revertErr).Msg("failed to remove network")
+		// Only remove network if we created it
+		if existingNetworkName == "" {
+			log.Warn().Msg("error happened while deploying. removing network")
+			revertErr := t.NetworkDeployer.Cancel(ctx, &network)
+			if revertErr != nil {
+				log.Error().Err(revertErr).Msg("failed to remove network")
+			}
 		}
 		return workloads.VM{}, errors.Wrapf(err, "failed to deploy vm on node %d", vm.NodeID)
 	}
@@ -49,31 +97,76 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, d
 	return resVM, nil
 }
 
-// DeployVMLight deploys a vm-light with mounts
-func DeployVMLight(ctx context.Context, t deployer.TFPluginClient, vm workloads.VMLight, diskMounts []workloads.Disk, volumeMounts []workloads.Volume) (workloads.VMLight, error) {
-	networkName := fmt.Sprintf("%snetwork", vm.Name)
-	projectName := fmt.Sprintf("vm/%s", vm.Name)
-	network, err := buildNetworkLight(networkName, projectName, []uint32{vm.NodeID})
-	if err != nil {
-		return workloads.VMLight{}, err
+// DeployVMLight deploys a VM-light with mounts
+func DeployVMLight(ctx context.Context, t deployer.TFPluginClient, vm workloads.VMLight, diskMounts []workloads.Disk, volumeMounts []workloads.Volume, projectName, existingNetworkName string) (workloads.VMLight, error) {
+	var networkName string
+	var network workloads.ZNetLight
+	var err error
+
+	if existingNetworkName != "" {
+		// Use existing network
+		networkName = existingNetworkName
+		log.Info().Msgf("loading existing network '%s'", networkName)
+
+		// Load network using GetNetworkLight helper
+		network, err = GetNetworkLight(ctx, t, projectName, networkName)
+		if err != nil {
+			return workloads.VMLight{}, errors.Wrapf(err, "failed to load existing network '%s'", networkName)
+		}
+
+		// Add VM node to network if not already present
+		if !slices.Contains(network.Nodes, vm.NodeID) {
+			log.Info().Msgf("adding node %d to network '%s'", vm.NodeID, networkName)
+			network.Nodes = append(network.Nodes, vm.NodeID)
+
+			// Add mycelium key (light VMs always use mycelium)
+			key, err := workloads.RandomMyceliumKey()
+			if err != nil {
+				return workloads.VMLight{}, err
+			}
+			network.MyceliumKeys[vm.NodeID] = key
+
+			// Redeploy network with new node
+			log.Info().Msg("updating network")
+			err = t.NetworkDeployer.Deploy(ctx, &network)
+			if err != nil {
+				return workloads.VMLight{}, errors.Wrapf(err, "failed to update network with node %d", vm.NodeID)
+			}
+		}
+	} else {
+		// Create new network - derive name from project name
+		// Strip path separators from project name (e.g., "vm/myapp" -> "myapp")
+		baseName := projectName
+		if idx := strings.LastIndex(projectName, "/"); idx != -1 {
+			baseName = projectName[idx+1:]
+		}
+		networkName = fmt.Sprintf("%snetwork", baseName)
+
+		network, err = buildNetworkLight(networkName, projectName, []uint32{vm.NodeID})
+		if err != nil {
+			return workloads.VMLight{}, err
+		}
+
+		log.Info().Msg("deploying network")
+		err = t.NetworkDeployer.Deploy(ctx, &network)
+		if err != nil {
+			return workloads.VMLight{}, errors.Wrapf(err, "failed to deploy network on node %d", vm.NodeID)
+		}
 	}
 
 	vm.NetworkName = networkName
 	dl := workloads.NewDeployment(vm.Name, vm.NodeID, projectName, nil, networkName, diskMounts, nil, nil, []workloads.VMLight{vm}, nil, volumeMounts)
 
-	log.Info().Msg("deploying network")
-	err = t.NetworkDeployer.Deploy(ctx, &network)
-	if err != nil {
-		return workloads.VMLight{}, errors.Wrapf(err, "failed to deploy network on node %d", vm.NodeID)
-	}
-
 	log.Info().Msg("deploying vm")
 	err = t.DeploymentDeployer.Deploy(ctx, &dl)
 	if err != nil {
-		log.Warn().Msg("error happened while deploying. removing network")
-		revertErr := t.NetworkDeployer.Cancel(ctx, &network)
-		if revertErr != nil {
-			log.Error().Err(revertErr).Msg("failed to remove network")
+		// Only remove network if we created it
+		if existingNetworkName == "" {
+			log.Warn().Msg("error happened while deploying. removing network")
+			revertErr := t.NetworkDeployer.Cancel(ctx, &network)
+			if revertErr != nil {
+				log.Error().Err(revertErr).Msg("failed to remove network")
+			}
 		}
 		return workloads.VMLight{}, errors.Wrapf(err, "failed to deploy vm on node %d", vm.NodeID)
 	}

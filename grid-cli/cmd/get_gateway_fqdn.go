@@ -15,7 +15,14 @@ import (
 var getGatewayFQDNCmd = &cobra.Command{
 	Use:   "fqdn <gateway-fqdn>",
 	Short: "Get deployed gateway fqdn",
-	Args:  cobra.ExactArgs(1),
+	Long: `Get details of a deployed gateway FQDN proxy by name.
+
+Requires the project name to locate the gateway.
+
+Examples:
+  # Get gateway FQDN proxy
+  tfcmd get gateway fqdn mygateway --project-name myproject`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		noColor, err := cmd.Flags().GetBool("no-color")
 		if err != nil {
@@ -48,7 +55,12 @@ var getGatewayFQDNCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		gateway, err := command.GetGatewayFQDN(cmd.Context(), t, args[0])
+		projectName, err := cmd.Flags().GetString("project-name")
+		if err != nil {
+			log.Fatal().Err(err).Send()
+		}
+
+		gateway, err := command.GetGatewayFQDN(cmd.Context(), t, projectName, args[0])
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -62,4 +74,10 @@ var getGatewayFQDNCmd = &cobra.Command{
 
 func init() {
 	getGatewayCmd.AddCommand(getGatewayFQDNCmd)
+
+	getGatewayFQDNCmd.Flags().StringP("project-name", "p", "", "project name of the gateway")
+	err := getGatewayFQDNCmd.MarkFlagRequired("project-name")
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
 }

@@ -15,7 +15,14 @@ import (
 var getZDBCmd = &cobra.Command{
 	Use:   "zdb <deployment-name>",
 	Short: "Get deployed zdb",
-	Args:  cobra.ExactArgs(1),
+	Long: `Get details of a deployed ZDB (Zero-DB) by deployment name.
+
+Requires the project name to locate the ZDB deployment.
+
+Examples:
+  # Get ZDB deployment
+  tfcmd get zdb myzdb --project-name myproject`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		noColor, err := cmd.Flags().GetBool("no-color")
 		if err != nil {
@@ -48,7 +55,12 @@ var getZDBCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		zdb, err := command.GetDeployment(cmd.Context(), t, args[0])
+		projectName, err := cmd.Flags().GetString("project-name")
+		if err != nil {
+			log.Fatal().Err(err).Send()
+		}
+
+		zdb, err := command.GetDeployment(cmd.Context(), t, projectName, args[0])
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -64,4 +76,10 @@ var getZDBCmd = &cobra.Command{
 
 func init() {
 	getCmd.AddCommand(getZDBCmd)
+
+	getZDBCmd.Flags().StringP("project-name", "p", "", "project name of the ZDB deployment")
+	err := getZDBCmd.MarkFlagRequired("project-name")
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
 }
