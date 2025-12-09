@@ -13,8 +13,9 @@ import (
 
 // getGatewayFQDNCmd represents the get gateway fqdn command
 var getGatewayFQDNCmd = &cobra.Command{
-	Use:   "fqdn",
-	Short: "Get deployed gateway FQDN",
+	Use:   "fqdn <gateway-fqdn>",
+	Short: "Get deployed gateway fqdn",
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		noColor, err := cmd.Flags().GetBool("no-color")
 		if err != nil {

@@ -13,7 +13,7 @@ import (
 
 // getZDBCmd represents the get zdb command
 var getZDBCmd = &cobra.Command{
-	Use:   "zdb",
+	Use:   "zdb <deployment-name>",
 	Short: "Get deployed zdb",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {

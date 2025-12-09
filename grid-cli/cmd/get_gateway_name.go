@@ -13,8 +13,9 @@ import (
 
 // getGatewayNameCmd represents the get gateway name command
 var getGatewayNameCmd = &cobra.Command{
-	Use:   "name",
+	Use:   "name <gateway-name>",
 	Short: "Get deployed gateway name",
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		noColor, err := cmd.Flags().GetBool("no-color")
 		if err != nil {

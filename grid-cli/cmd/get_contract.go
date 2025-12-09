@@ -14,8 +14,9 @@ import (
 
 // getContractCmd represents the get contract command
 var getContractCmd = &cobra.Command{
-	Use:   "contract",
-	Short: "Get twin contract",
+	Use:   "contract <contract-id>",
+	Short: "Get deployed contract",
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		noColor, err := cmd.Flags().GetBool("no-color")
 		if err != nil {

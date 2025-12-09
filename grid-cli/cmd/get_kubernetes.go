@@ -11,10 +11,10 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 )
 
-// getKubernetesCmd represents the get kubernetes command
-var getKubernetesCmd = &cobra.Command{
-	Use:   "kubernetes",
-	Short: "Get deployed kubernetes",
+// getK8sCmd represents the get kubernetes command
+var getK8sCmd = &cobra.Command{
+	Use:   "kubernetes <cluster-name>",
+	Short: "Get deployed kubernetes cluster",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		noColor, err := cmd.Flags().GetBool("no-color")
@@ -61,5 +61,5 @@ var getKubernetesCmd = &cobra.Command{
 }
 
 func init() {
-	getCmd.AddCommand(getKubernetesCmd)
+	getCmd.AddCommand(getK8sCmd)
 }

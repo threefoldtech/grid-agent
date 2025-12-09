@@ -13,7 +13,7 @@ import (
 
 // getVMCmd represents the get vm command
 var getVMCmd = &cobra.Command{
-	Use:   "vm",
+	Use:   "vm <vm-name>",
 	Short: "Get deployed vm",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
