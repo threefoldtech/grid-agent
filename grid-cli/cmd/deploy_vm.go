@@ -97,6 +97,22 @@ func parseDiskSpecs(specs []string, defaultMountPoint string) ([]DiskSpec, error
 var deployVMCmd = &cobra.Command{
 	Use:   "vm",
 	Short: "Deploy a vm",
+	Long: `Deploy a virtual machine to the ThreeFold Grid.
+
+Supports single VM deployment or multi-VM deployments with shared networks.
+Use --project-name to organize VMs into projects and --network to deploy
+multiple VMs on the same network.
+
+Examples:
+  # Deploy single VM with default settings
+  tfcmd deploy vm --name myvm --ssh ~/.ssh/id_rsa.pub
+  
+  # Deploy VM with custom project name
+  tfcmd deploy vm --name webserver --ssh ~/.ssh/id_rsa.pub --cpu 4 --memory 8 --project-name production
+  
+  # Deploy multiple VMs on shared network
+  tfcmd deploy vm --name vm01 --ssh ~/.ssh/id_rsa.pub --project-name myapp
+  tfcmd deploy vm --name vm02 --ssh ~/.ssh/id_rsa.pub --network myappnetwork --project-name myapp`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, err := cmd.Flags().GetString("name")
 		if err != nil {

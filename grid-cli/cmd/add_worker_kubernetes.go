@@ -17,6 +17,11 @@ import (
 var addWorkerCmd = &cobra.Command{
 	Use:   "add",
 	Short: "add  workders to a kubernetes cluster",
+	Long: `Add worker nodes to an existing Kubernetes cluster.
+
+Examples:
+  # Add 2 workers to cluster
+  tfcmd update kubernetes add --name mycluster --workers-number 2`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, err := cmd.Flags().GetString("name")
 		if err != nil {

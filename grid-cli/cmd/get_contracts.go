@@ -17,6 +17,14 @@ import (
 var getContractsCmd = &cobra.Command{
 	Use:   "contracts",
 	Short: "Get twin contracts",
+	Long: `Get all contracts associated with your twin.
+
+Displays node contracts (VMs, networks, gateways) and name contracts
+in a tabular format with contract IDs, types, names, and project names.
+
+Examples:
+  # List all your contracts
+  tfcmd get contracts`,
 	Run: func(cmd *cobra.Command, args []string) {
 		noColor, err := cmd.Flags().GetBool("no-color")
 		if err != nil {

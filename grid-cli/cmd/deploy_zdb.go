@@ -19,6 +19,16 @@ import (
 var deployZDBCmd = &cobra.Command{
 	Use:   "zdb",
 	Short: "Deploy a zdb",
+	Long: `Deploy Zero-DB storage to the ThreeFold Grid.
+
+Zero-DB is a key-value store optimized for large-scale data storage.
+
+Examples:
+  # Deploy single ZDB
+  tfcmd deploy zdb --project_name myproject --size 10
+  
+  # Deploy multiple ZDBs
+  tfcmd deploy zdb --project_name myproject --size 10 --count 3`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName, err := cmd.Flags().GetString("project_name")
 		if err != nil {

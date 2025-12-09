@@ -15,6 +15,13 @@ import (
 var deployGatewayNameCmd = &cobra.Command{
 	Use:   "name",
 	Short: "Deploy a gateway name proxy",
+	Long: `Deploy a gateway name proxy for HTTP/HTTPS traffic.
+
+Creates a subdomain on a gateway node that proxies to your backend.
+
+Examples:
+  # Deploy gateway with backend
+  tfcmd deploy gateway name --name myapp --backends http://10.20.2.2:8000`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, tls, zosBackends, node, err := parseCommonGatewayFlags(cmd)
 		if err != nil {

@@ -18,6 +18,17 @@ import (
 var deployKubernetesCmd = &cobra.Command{
 	Use:   "kubernetes",
 	Short: "Deploy a kubernetes cluster",
+	Long: `Deploy a Kubernetes cluster to the ThreeFold Grid.
+
+Creates a master node and optional worker nodes. The cluster will be
+accessible via kubectl after deployment.
+
+Examples:
+  # Deploy cluster with master only
+  tfcmd deploy kubernetes --name mycluster --ssh ~/.ssh/id_rsa.pub
+  
+  # Deploy cluster with 2 workers
+  tfcmd deploy kubernetes --name mycluster --ssh ~/.ssh/id_rsa.pub --workers-number 2`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, err := cmd.Flags().GetString("name")
 		if err != nil {

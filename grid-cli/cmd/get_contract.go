@@ -16,7 +16,12 @@ import (
 var getContractCmd = &cobra.Command{
 	Use:   "contract <contract-id>",
 	Short: "Get deployed contract",
-	Args:  cobra.ExactArgs(1),
+	Long: `Get details of a specific contract by ID.
+
+Examples:
+  # Get contract details
+  tfcmd get contract 50856`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		noColor, err := cmd.Flags().GetBool("no-color")
 		if err != nil {

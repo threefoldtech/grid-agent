@@ -14,6 +14,13 @@ import (
 var deployGatewayFQDNCmd = &cobra.Command{
 	Use:   "fqdn",
 	Short: "Deploy a gateway FQDN proxy",
+	Long: `Deploy a gateway FQDN proxy for your custom domain.
+
+Requires you to own a domain and point it to the gateway node's IP.
+
+Examples:
+  # Deploy gateway with custom domain
+  tfcmd deploy gateway fqdn --name myapp --fqdn myapp.example.com --backends http://10.20.2.2:8000 --node 14`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, tls, zosBackends, node, err := parseCommonGatewayFlags(cmd)
 		if err != nil {

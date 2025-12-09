@@ -13,8 +13,19 @@ import (
 
 // cancelContracts represents the cancel contracts command
 var cancelContracts = &cobra.Command{
-	Use:   "contracts",
+	Use:   "contracts [contract-id...]",
 	Short: "Cancel twin contracts",
+	Long: `Cancel one or more contracts by ID, or all contracts.
+
+You can specify multiple contract IDs as arguments, or use the --all flag
+to cancel all contracts associated with your twin.
+
+Examples:
+  # Cancel specific contracts
+  tfcmd cancel contracts 50856 50857 50858
+  
+  # Cancel all contracts
+  tfcmd cancel contracts --all`,
 	Run: func(cmd *cobra.Command, args []string) {
 		all, err := cmd.Flags().GetBool("all")
 		if err != nil {

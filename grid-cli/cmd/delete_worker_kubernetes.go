@@ -16,6 +16,11 @@ import (
 var deleteWorkerCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "remove worker from a kubernetes cluster",
+	Long: `Remove a worker node from an existing Kubernetes cluster.
+
+Examples:
+  # Remove worker from cluster
+  tfcmd update kubernetes delete --name mycluster --worker-name worker0`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, err := cmd.Flags().GetString("name")
 		if err != nil {
