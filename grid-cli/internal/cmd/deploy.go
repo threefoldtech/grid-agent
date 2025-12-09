@@ -15,7 +15,7 @@ import (
 )
 
 // DeployVM deploys a vm with mounts
-func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, diskMount workloads.Disk, volumeMount workloads.Volume) (workloads.VM, error) {
+func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, diskMounts []workloads.Disk, volumeMounts []workloads.Volume) (workloads.VM, error) {
 	networkName := fmt.Sprintf("%snetwork", vm.Name)
 	projectName := fmt.Sprintf("vm/%s", vm.Name)
 	network, err := buildNetwork(networkName, projectName, []uint32{vm.NodeID}, len(vm.MyceliumIPSeed) != 0)
@@ -23,14 +23,6 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, d
 		return workloads.VM{}, err
 	}
 
-	diskMounts := []workloads.Disk{}
-	if diskMount.SizeGB != 0 {
-		diskMounts = append(diskMounts, diskMount)
-	}
-	volumeMounts := []workloads.Volume{}
-	if volumeMount.SizeGB != 0 {
-		volumeMounts = append(volumeMounts, volumeMount)
-	}
 	vm.NetworkName = networkName
 	dl := workloads.NewDeployment(vm.Name, vm.NodeID, projectName, nil, networkName, diskMounts, nil, []workloads.VM{vm}, nil, nil, volumeMounts)
 
@@ -58,22 +50,12 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, d
 }
 
 // DeployVMLight deploys a vm-light with mounts
-func DeployVMLight(ctx context.Context, t deployer.TFPluginClient, vm workloads.VMLight, diskMount workloads.Disk, volumeMount workloads.Volume) (workloads.VMLight, error) {
+func DeployVMLight(ctx context.Context, t deployer.TFPluginClient, vm workloads.VMLight, diskMounts []workloads.Disk, volumeMounts []workloads.Volume) (workloads.VMLight, error) {
 	networkName := fmt.Sprintf("%snetwork", vm.Name)
 	projectName := fmt.Sprintf("vm/%s", vm.Name)
 	network, err := buildNetworkLight(networkName, projectName, []uint32{vm.NodeID})
 	if err != nil {
 		return workloads.VMLight{}, err
-	}
-
-	diskMounts := []workloads.Disk{}
-	if diskMount.SizeGB != 0 {
-		diskMounts = append(diskMounts, diskMount)
-	}
-
-	volumeMounts := []workloads.Volume{}
-	if volumeMount.SizeGB != 0 {
-		volumeMounts = append(volumeMounts, volumeMount)
 	}
 
 	vm.NetworkName = networkName

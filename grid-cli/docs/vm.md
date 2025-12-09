@@ -18,8 +18,8 @@ tfcmd deploy vm [flags]
 - node: node id vm should be deployed on.
 - farm: farm id vm should be deployed on, if set choose available node from farm that fits vm specs (default 1). note: node and farm flags cannot be set both.
 - cpu: number of cpu units (default 1).
-- disk: size of disk in GB mounted on /data. if not set no disk workload is made.
-- volume: size of volume in GB mounted on /volume. if not set no volume workload is made
+- disk: disk specification in format 'size:mountpoint' (e.g., '10:/data'). Can be specified multiple times for multiple disks. For backward compatibility, just 'size' defaults to '/data'. If multiple disks are specified without mount points, they will be mounted at /data, /data1, /data2, etc.
+- volume: volume specification in format 'size:mountpoint' (e.g., '50:/shared'). Can be specified multiple times for multiple volumes. For backward compatibility, just 'size' defaults to '/volume'. If multiple volumes are specified without mount points, they will be mounted at /volume, /volume1, /volume2, etc.
 - entrypoint: entrypoint for VM flist (default "/sbin/zinit init"). note: setting this without the flist option will fail.
 - flist: flist used in VM (default "<https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist>"). note: setting this without the entrypoint option will fail.
 - ipv4: assign public ipv4 for VM (default false).
@@ -48,6 +48,44 @@ $ tfcmd deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 --
 
 ```console
 $ tfcmd deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 --disk 10 --gpus '0000:0e:00.0/1882/543f' --gpus '0000:0e:00.0/1887/593f' --node 12
+12:06PM INF starting peer session=tf-1508255 twin=192
+12:06PM INF deploying network
+12:06PM INF deploying vm
+12:07PM INF vm planetary ip: 300:e9c4:9048:57cf:7da2:ac99:99db:8821
+12:07PM INF vm mycelium ip: 544:b74f:ceef:cc7e:ff0f:6b18:921f:8031
+```
+
+- Deploying VM with multiple disks and custom mount points
+
+```console
+$ tfcmd deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 \
+  --disk 10:/data \
+  --disk 20:/mnt/storage \
+  --disk 50:/var/lib/docker
+12:06PM INF starting peer session=tf-1508255 twin=192
+12:06PM INF deploying network
+12:06PM INF deploying vm
+12:07PM INF vm planetary ip: 300:e9c4:9048:57cf:7da2:ac99:99db:8821
+12:07PM INF vm mycelium ip: 544:b74f:ceef:cc7e:ff0f:6b18:921f:8031
+```
+
+- Deploying VM with mixed disks and volumes
+
+```console
+$ tfcmd deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 \
+  --disk 10:/data \
+  --volume 100:/shared
+12:06PM INF starting peer session=tf-1508255 twin=192
+12:06PM INF deploying network
+12:06PM INF deploying vm
+12:07PM INF vm planetary ip: 300:e9c4:9048:57cf:7da2:ac99:99db:8821
+12:07PM INF vm mycelium ip: 544:b74f:ceef:cc7e:ff0f:6b18:921f:8031
+```
+
+- Backward compatible: deploying VM with single disk (old format)
+
+```console
+$ tfcmd deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 --disk 10
 12:06PM INF starting peer session=tf-1508255 twin=192
 12:06PM INF deploying network
 12:06PM INF deploying vm

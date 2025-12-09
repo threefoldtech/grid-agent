@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -25,11 +27,70 @@ var (
 	ubuntuFlistEntrypoint = "/sbin/zinit init"
 )
 
+// DiskSpec represents a disk or volume specification with size and mount point
+type DiskSpec struct {
+	SizeGB     uint64
+	MountPoint string
+}
+
 func convertGPUsToZosGPUs(gpus []string) (zosGPUs []zos.GPU) {
 	for _, g := range gpus {
 		zosGPUs = append(zosGPUs, zos.GPU(g))
 	}
 	return
+}
+
+// parseDiskSpecs parses disk/volume specifications in format "size:mountpoint" or just "size"
+// For backward compatibility, if only size is provided, defaultMountPoint is used
+func parseDiskSpecs(specs []string, defaultMountPoint string) ([]DiskSpec, error) {
+	if len(specs) == 0 {
+		return []DiskSpec{}, nil
+	}
+
+	result := make([]DiskSpec, 0, len(specs))
+	mountCounter := 0
+
+	for _, spec := range specs {
+		spec = strings.TrimSpace(spec)
+		if spec == "" {
+			continue
+		}
+
+		parts := strings.SplitN(spec, ":", 2)
+
+		// Parse size
+		sizeGB, err := strconv.ParseUint(parts[0], 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid disk size '%s': %w", parts[0], err)
+		}
+
+		if sizeGB == 0 {
+			continue // Skip zero-sized disks
+		}
+
+		// Determine mount point
+		mountPoint := defaultMountPoint
+		if len(parts) == 2 {
+			mountPoint = strings.TrimSpace(parts[1])
+			if mountPoint == "" {
+				return nil, fmt.Errorf("mount point cannot be empty in spec '%s'", spec)
+			}
+			if !strings.HasPrefix(mountPoint, "/") {
+				return nil, fmt.Errorf("mount point must be an absolute path (start with /): '%s'", mountPoint)
+			}
+		} else if mountCounter > 0 {
+			// For multiple disks without explicit mount points, append counter
+			mountPoint = fmt.Sprintf("%s%d", defaultMountPoint, mountCounter)
+		}
+
+		result = append(result, DiskSpec{
+			SizeGB:     sizeGB,
+			MountPoint: mountPoint,
+		})
+		mountCounter++
+	}
+
+	return result, nil
 }
 
 // deployVMCmd represents the deploy vm command
@@ -74,14 +135,25 @@ var deployVMCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		disk, err := cmd.Flags().GetUint64("disk")
+		diskSpecs, err := cmd.Flags().GetStringSlice("disk")
 		if err != nil {
 			return err
 		}
-		volume, err := cmd.Flags().GetUint64("volume")
+		volumeSpecs, err := cmd.Flags().GetStringSlice("volume")
 		if err != nil {
 			return err
 		}
+
+		// Parse disk and volume specifications
+		disks, err := parseDiskSpecs(diskSpecs, "/data")
+		if err != nil {
+			log.Fatal().Err(err).Msg("failed to parse disk specifications")
+		}
+		volumes, err := parseDiskSpecs(volumeSpecs, "/volume")
+		if err != nil {
+			log.Fatal().Err(err).Msg("failed to parse volume specifications")
+		}
+
 		flist, err := cmd.Flags().GetString("flist")
 		if err != nil {
 			return err
@@ -174,7 +246,7 @@ var deployVMCmd = &cobra.Command{
 				Entrypoint:     entrypoint,
 				MyceliumIPSeed: seed,
 			}
-			err = executeVMLight(cmd.Context(), t, vm, node, farm, disk, volume)
+			err = executeVMLight(cmd.Context(), t, vm, node, farm, disks, volumes)
 			if err == nil {
 				return nil
 			}
@@ -198,7 +270,7 @@ var deployVMCmd = &cobra.Command{
 			MyceliumIPSeed: seed,
 			Planetary:      ygg,
 		}
-		err = executeVM(cmd.Context(), t, vm, node, farm, disk, volume)
+		err = executeVM(cmd.Context(), t, vm, node, farm, disks, volumes)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -229,10 +301,10 @@ func init() {
 	deployVMCmd.Flags().Uint8("cpu", 1, "number of cpu units")
 	deployVMCmd.Flags().Uint64("memory", 1, "memory size in gb")
 	deployVMCmd.Flags().Uint64("rootfs", 2, "root filesystem size in gb")
-	deployVMCmd.Flags().Uint64("disk", 0, "disk size in gb mounted on /data")
+	deployVMCmd.Flags().StringSlice("disk", []string{}, "disk specification in format 'size:mountpoint' (e.g., '10:/data'). Can be specified multiple times. For backward compatibility, just 'size' defaults to '/data'")
 	deployVMCmd.Flags().String("flist", ubuntuFlist, "flist for vm")
 	deployVMCmd.Flags().StringSlice("gpus", []string{}, "gpus for vm")
-	deployVMCmd.Flags().Uint64("volume", 0, "volume size in gb mounted on /volume")
+	deployVMCmd.Flags().StringSlice("volume", []string{}, "volume specification in format 'size:mountpoint' (e.g., '50:/shared'). Can be specified multiple times. For backward compatibility, just 'size' defaults to '/volume'")
 
 	deployVMCmd.Flags().String("entrypoint", ubuntuFlistEntrypoint, "entrypoint for vm")
 	// to ensure entrypoint is provided for custom flist
@@ -249,24 +321,51 @@ func executeVM(
 	ctx context.Context, t deployer.TFPluginClient,
 	vm workloads.VM,
 	node uint32,
-	farm, disk, volume uint64,
+	farm uint64, diskSpecs, volumeSpecs []DiskSpec,
 ) error {
-	var diskMount workloads.Disk
-	if disk != 0 {
-		diskName := fmt.Sprintf("%sdisk", vm.Name)
-		diskMount = workloads.Disk{Name: diskName, SizeGB: disk}
-		vm.Mounts = []workloads.Mount{{Name: diskName, MountPoint: "/data"}}
+	// Build disk mounts from specifications
+	diskMounts := make([]workloads.Disk, 0, len(diskSpecs))
+	for i, spec := range diskSpecs {
+		diskName := fmt.Sprintf("%sdisk%d", vm.Name, i)
+		diskMounts = append(diskMounts, workloads.Disk{
+			Name:   diskName,
+			SizeGB: spec.SizeGB,
+		})
+		vm.Mounts = append(vm.Mounts, workloads.Mount{
+			Name:       diskName,
+			MountPoint: spec.MountPoint,
+		})
 	}
 
-	var volumeMount workloads.Volume
-	if volume != 0 {
-		volumeName := fmt.Sprintf("%svolume", vm.Name)
-		volumeMount = workloads.Volume{Name: volumeName, SizeGB: volume}
-		vm.Mounts = append(vm.Mounts, workloads.Mount{Name: volumeName, MountPoint: "/volume"})
+	// Build volume mounts from specifications
+	volumeMounts := make([]workloads.Volume, 0, len(volumeSpecs))
+	for i, spec := range volumeSpecs {
+		volumeName := fmt.Sprintf("%svolume%d", vm.Name, i)
+		volumeMounts = append(volumeMounts, workloads.Volume{
+			Name:   volumeName,
+			SizeGB: spec.SizeGB,
+		})
+		vm.Mounts = append(vm.Mounts, workloads.Mount{
+			Name:       volumeName,
+			MountPoint: spec.MountPoint,
+		})
 	}
 
 	if node == 0 {
-		filter, ssd, rootfss := filters.BuildVMFilter(diskMount, volumeMount, farm, vm.MemoryMB, vm.RootfsSizeMB, vm.PublicIP, false)
+		// Calculate total disk and volume sizes for node filtering
+		var totalDiskSize, totalVolumeSize uint64
+		for _, spec := range diskSpecs {
+			totalDiskSize += spec.SizeGB
+		}
+		for _, spec := range volumeSpecs {
+			totalVolumeSize += spec.SizeGB
+		}
+
+		// Use a single disk/volume for filtering (backward compatible)
+		diskForFilter := workloads.Disk{SizeGB: totalDiskSize}
+		volumeForFilter := workloads.Volume{SizeGB: totalVolumeSize}
+
+		filter, ssd, rootfss := filters.BuildVMFilter(diskForFilter, volumeForFilter, farm, vm.MemoryMB, vm.RootfsSizeMB, vm.PublicIP, false)
 		nodes, err := deployer.FilterNodes(
 			ctx,
 			t,
@@ -283,7 +382,7 @@ func executeVM(
 	}
 
 	vm.NodeID = node
-	resVM, err := command.DeployVM(ctx, t, vm, diskMount, volumeMount)
+	resVM, err := command.DeployVM(ctx, t, vm, diskMounts, volumeMounts)
 	if err != nil {
 		return err
 	}
@@ -308,24 +407,51 @@ func executeVMLight(
 	ctx context.Context, t deployer.TFPluginClient,
 	vm workloads.VMLight,
 	node uint32,
-	farm, disk, volume uint64,
+	farm uint64, diskSpecs, volumeSpecs []DiskSpec,
 ) error {
-	var diskMount workloads.Disk
-	if disk != 0 {
-		diskName := fmt.Sprintf("%sdisk", vm.Name)
-		diskMount = workloads.Disk{Name: diskName, SizeGB: disk}
-		vm.Mounts = []workloads.Mount{{Name: diskName, MountPoint: "/data"}}
+	// Build disk mounts from specifications
+	diskMounts := make([]workloads.Disk, 0, len(diskSpecs))
+	for i, spec := range diskSpecs {
+		diskName := fmt.Sprintf("%sdisk%d", vm.Name, i)
+		diskMounts = append(diskMounts, workloads.Disk{
+			Name:   diskName,
+			SizeGB: spec.SizeGB,
+		})
+		vm.Mounts = append(vm.Mounts, workloads.Mount{
+			Name:       diskName,
+			MountPoint: spec.MountPoint,
+		})
 	}
 
-	var volumeMount workloads.Volume
-	if volume != 0 {
-		volumeName := fmt.Sprintf("%svolume", vm.Name)
-		volumeMount = workloads.Volume{Name: volumeName, SizeGB: volume}
-		vm.Mounts = append(vm.Mounts, workloads.Mount{Name: volumeName, MountPoint: "/volume"})
+	// Build volume mounts from specifications
+	volumeMounts := make([]workloads.Volume, 0, len(volumeSpecs))
+	for i, spec := range volumeSpecs {
+		volumeName := fmt.Sprintf("%svolume%d", vm.Name, i)
+		volumeMounts = append(volumeMounts, workloads.Volume{
+			Name:   volumeName,
+			SizeGB: spec.SizeGB,
+		})
+		vm.Mounts = append(vm.Mounts, workloads.Mount{
+			Name:       volumeName,
+			MountPoint: spec.MountPoint,
+		})
 	}
 
 	if node == 0 {
-		filter, ssd, rootfss := filters.BuildVMFilter(diskMount, volumeMount, farm, vm.MemoryMB, vm.RootfsSizeMB, false, true)
+		// Calculate total disk and volume sizes for node filtering
+		var totalDiskSize, totalVolumeSize uint64
+		for _, spec := range diskSpecs {
+			totalDiskSize += spec.SizeGB
+		}
+		for _, spec := range volumeSpecs {
+			totalVolumeSize += spec.SizeGB
+		}
+
+		// Use a single disk/volume for filtering (backward compatible)
+		diskForFilter := workloads.Disk{SizeGB: totalDiskSize}
+		volumeForFilter := workloads.Volume{SizeGB: totalVolumeSize}
+
+		filter, ssd, rootfss := filters.BuildVMFilter(diskForFilter, volumeForFilter, farm, vm.MemoryMB, vm.RootfsSizeMB, false, true)
 		nodes, err := deployer.FilterNodes(
 			ctx,
 			t,
@@ -342,7 +468,7 @@ func executeVMLight(
 	}
 
 	vm.NodeID = node
-	resVM, err := command.DeployVMLight(ctx, t, vm, diskMount, volumeMount)
+	resVM, err := command.DeployVMLight(ctx, t, vm, diskMounts, volumeMounts)
 	if err != nil {
 		return err
 	}
