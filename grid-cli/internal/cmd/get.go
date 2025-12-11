@@ -22,24 +22,19 @@ func checkIfExistAndAppend(t deployer.TFPluginClient, node uint32, contractID ui
 
 // GetVM gets a VM by project name and VM name
 func GetVM(ctx context.Context, t deployer.TFPluginClient, projectName, name string) (workloads.Deployment, error) {
-	contracts, err := t.ContractsGetter.ListContractsOfProjectName(projectName, true)
+	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(projectName, workloads.VMType, name)
 	if err != nil {
 		return workloads.Deployment{}, err
 	}
 
-	if len(contracts.NodeContracts) == 0 {
+	if len(nodeContractIDs) == 0 {
 		return workloads.Deployment{}, fmt.Errorf("no contracts found for VM '%s' in project '%s'", name, projectName)
 	}
 
 	var nodeID uint32
-	for _, contract := range contracts.NodeContracts {
-		contractID, err := strconv.ParseUint(contract.ContractID, 10, 64)
-		if err != nil {
-			return workloads.Deployment{}, err
-		}
-
-		nodeID = contract.NodeID
-		checkIfExistAndAppend(t, nodeID, contractID)
+	for node, contractID := range nodeContractIDs {
+		checkIfExistAndAppend(t, node, contractID)
+		nodeID = node
 	}
 
 	return t.State.LoadDeploymentFromGrid(ctx, nodeID, name)
