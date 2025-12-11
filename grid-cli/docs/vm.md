@@ -40,6 +40,25 @@ When deploying a VM:
 - The network name is derived from the project name (e.g., project `vm/myapp` creates network `myappnetwork`)
 - Multiple VMs can share the same project and network by using the same `--project-name` and `--network`
 
+### Network Limitations
+
+**IMPORTANT**: Networks can only span nodes within the same farm.
+
+- ✅ Nodes 11 and 14 (both in Farm 1) can share a network
+- ❌ Node 327 (Farm 2) cannot join Farm 1's network
+
+For cross-farm deployments:
+- Use separate networks per farm
+- Use planetary network IPs for inter-VM communication
+
+### Disks vs Volumes
+
+- **Disks**: Local SSD storage on the node (faster, not shared between VMs)
+- **Volumes**: Distributed QSFS storage (slower, can be shared across VMs)
+
+Use disks for: databases, caches, temporary files  
+Use volumes for: shared data, backups, large files
+
 Example:
 
 - Deploying VM without GPU

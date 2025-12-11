@@ -2,6 +2,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	command "github.com/threefoldtech/grid-agent/grid-cli/internal/cmd"
@@ -21,17 +23,29 @@ Creates a subdomain on a gateway node that proxies to your backend.
 
 Examples:
   # Deploy gateway with backend
-  tfcmd deploy gateway name --name myapp --backends http://10.20.2.2:8000`,
+  tfcmd deploy gateway name --name myapp --node 11 --backends http://10.20.2.2:8080`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		name, tls, zosBackends, node, err := parseCommonGatewayFlags(cmd)
+		name, tls, zosBackends, node, network, projectName, err := parseCommonGatewayFlags(cmd)
 		if err != nil {
 			return err
 		}
+
+		// Validate: --network requires --project-name
+		if network != "" && projectName == "" {
+			return fmt.Errorf("--project-name is required when using --network")
+		}
+
+		// Default project name to gateway name if not provided
+		if projectName == "" {
+			projectName = name
+		}
+
 		gateway := workloads.GatewayNameProxy{
 			Name:           name,
 			Backends:       zosBackends,
 			TLSPassthrough: tls,
-			SolutionType:   name,
+			SolutionType:   projectName, // Use project name
+			Network:        network,
 		}
 		farm, err := cmd.Flags().GetUint64("farm")
 		if err != nil {
@@ -96,6 +110,6 @@ func init() {
 	deployGatewayCmd.AddCommand(deployGatewayNameCmd)
 
 	deployGatewayNameCmd.Flags().Uint32("node", 0, "node id gateway should be deployed on")
-	deployGatewayNameCmd.Flags().Uint64("farm", 1, "farm id gateway should be deployed on")
+	deployGatewayNameCmd.Flags().Uint64("farm", 0, "farm ID for deployment (0 = any farm, or specify farm ID)")
 	deployGatewayNameCmd.MarkFlagsMutuallyExclusive("node", "farm")
 }

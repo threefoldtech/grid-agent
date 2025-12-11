@@ -130,8 +130,8 @@ func loadProjectVMs(ctx context.Context, t deployer.TFPluginClient, projectName 
 			continue
 		}
 
-		// Skip network contracts - we only want VM deployments
-		if deploymentData.Type == "network" {
+		// Only load VM deployments - skip networks, gateways, etc.
+		if deploymentData.Type != workloads.VMType {
 			continue
 		}
 

@@ -17,7 +17,11 @@ tfcmd deploy gateway fqdn [flags]
 
 ### Optional Flags
 
--tls: add TLS passthrough option (default false).
+- tls: add TLS passthrough option (default false).
+- network: network name (optional, for reference). Required when backend uses private IP.
+- project-name: project name for grouping deployments (required when using --network).
+
+See [Gateway Name documentation](gateway-name.md#network-flag-usage) for network flag usage examples.
 
 Example:
 

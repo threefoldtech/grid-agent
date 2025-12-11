@@ -125,7 +125,9 @@ func GetGatewayName(ctx context.Context, t deployer.TFPluginClient, projectName,
 		}
 
 		// Check if this is the gateway we're looking for
-		if deploymentData.Name == name && deploymentData.Type == "gateway" {
+		// SDK uses workloads.GatewayNameType constant ("Gateway Name")
+		// Also check "gateway" for backward compatibility with old deployments
+		if deploymentData.Name == name && (deploymentData.Type == "gateway" || deploymentData.Type == workloads.GatewayNameType) {
 			contractID, err := strconv.ParseUint(contract.ContractID, 10, 64)
 			if err != nil {
 				continue
@@ -162,7 +164,9 @@ func GetGatewayFQDN(ctx context.Context, t deployer.TFPluginClient, projectName,
 		}
 
 		// Check if this is the gateway we're looking for
-		if deploymentData.Name == name && deploymentData.Type == "gateway" {
+		// SDK uses workloads.GatewayFQDNType constant ("Gateway Fqdn")
+		// Also check "gateway" for backward compatibility with old deployments
+		if deploymentData.Name == name && (deploymentData.Type == "gateway" || deploymentData.Type == workloads.GatewayFQDNType) {
 			contractID, err := strconv.ParseUint(contract.ContractID, 10, 64)
 			if err != nil {
 				continue

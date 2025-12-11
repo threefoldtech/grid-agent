@@ -17,7 +17,29 @@ tfcmd deploy gateway name [flags]
 
 - node: node id gateway should be deployed on.
 - farm: farm id gateway should be deployed on, if set choose available node from farm that fits vm specs (default 1). note: node and farm flags cannot be set both.
--tls: add TLS passthrough option (default false).
+- tls: add TLS passthrough option (default false).
+- network: network name (optional, for reference). Required when backend uses private IP.
+- project-name: project name for grouping deployments (required when using --network).
+
+### Network Flag Usage
+
+The `--network` flag is optional but important:
+- **Required** when backend uses private IP (10.x.x.x from WireGuard network)
+- **Optional** when backend uses public or planetary IP
+
+**Example with private IP backend**:
+```bash
+tfcmd deploy gateway name --name mygw --node 11 \
+  --backends http://10.20.2.2:8080 \
+  --network myvmnetwork \
+  --project-name myapp
+```
+
+**Example with public IP backend**:
+```bash
+tfcmd deploy gateway name --name mygw --node 11 \
+  --backends http://203.0.113.1:8080
+```
 
 Example:
 

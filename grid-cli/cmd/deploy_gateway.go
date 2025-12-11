@@ -29,6 +29,8 @@ func init() {
 	}
 
 	deployGatewayCmd.PersistentFlags().Bool("tls", false, "add tls passthrough")
+	deployGatewayCmd.PersistentFlags().String("network", "", "network name (optional, for reference - gateway proxies to backend IP)")
+	deployGatewayCmd.PersistentFlags().String("project-name", "", "project name for grouping deployments (required when using --network)")
 }
 
 func parseCommonGatewayFlags(cmd *cobra.Command) (
@@ -36,6 +38,8 @@ func parseCommonGatewayFlags(cmd *cobra.Command) (
 	tls bool,
 	zosBackends []zos.Backend,
 	node uint32,
+	network string,
+	projectName string,
 	err error,
 ) {
 	name, err = cmd.Flags().GetString("name")
@@ -54,6 +58,14 @@ func parseCommonGatewayFlags(cmd *cobra.Command) (
 		zosBackends = append(zosBackends, zos.Backend(backend))
 	}
 	node, err = cmd.Flags().GetUint32("node")
+	if err != nil {
+		return
+	}
+	network, err = cmd.Flags().GetString("network")
+	if err != nil {
+		return
+	}
+	projectName, err = cmd.Flags().GetString("project-name")
 	if err != nil {
 		return
 	}

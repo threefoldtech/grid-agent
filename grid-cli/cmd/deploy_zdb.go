@@ -194,6 +194,6 @@ func init() {
 	deployZDBCmd.Flags().Bool("public", false, "if zdb gets a public ip6")
 
 	deployZDBCmd.Flags().Uint32("node", 0, "node id that zdb should be deployed on")
-	deployZDBCmd.Flags().Uint64("farm", 1, "farm id that zdb should be deployed on")
+	deployZDBCmd.Flags().Uint64("farm", 0, "farm ID for deployment (0 = any farm, or specify farm ID)")
 	deployZDBCmd.MarkFlagsMutuallyExclusive("node", "farm")
 }

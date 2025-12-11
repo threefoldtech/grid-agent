@@ -100,7 +100,7 @@ CANCEL/DELETE:
 - Cancel all: tfcmd cancel contracts -a (REQUIRES explicit user confirmation!)
 
 OTHER RELEVANT INFORMATION:
-- Don't Ask user for his twin ID, instead look it up as it it usually can be seen in the output of tfcmd, such "get" or "contracts", etc.
+- Don't Ask user for his twin ID, instead look it up as it it usually can be seen in the output of tfcmd, such "get contracts", etc.
 - Always use --disable-sentry with any deploy commands unless user specified otherwise
 
 %s`, schemaJSON),

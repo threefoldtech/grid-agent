@@ -2,6 +2,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	command "github.com/threefoldtech/grid-agent/grid-cli/internal/cmd"
@@ -14,15 +16,15 @@ import (
 var deployGatewayFQDNCmd = &cobra.Command{
 	Use:   "fqdn",
 	Short: "Deploy a gateway FQDN proxy",
-	Long: `Deploy a gateway FQDN proxy for your custom domain.
+	Long: `Deploy a gateway FQDN proxy for custom domains.
 
-Requires you to own a domain and point it to the gateway node's IP.
+Use your own domain name. You must configure DNS to point to the gateway node.
 
 Examples:
   # Deploy gateway with custom domain
-  tfcmd deploy gateway fqdn --name myapp --fqdn myapp.example.com --backends http://10.20.2.2:8000 --node 14`,
+  tfcmd deploy gateway fqdn --name myapp --fqdn myapp.example.com --node 14 --backends http://10.20.2.2:8080`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		name, tls, zosBackends, node, err := parseCommonGatewayFlags(cmd)
+		name, tls, zosBackends, node, network, projectName, err := parseCommonGatewayFlags(cmd)
 		if err != nil {
 			return err
 		}
@@ -30,6 +32,17 @@ Examples:
 		if err != nil {
 			return err
 		}
+
+		// Validate: --network requires --project-name
+		if network != "" && projectName == "" {
+			return fmt.Errorf("--project-name is required when using --network")
+		}
+
+		// Default project name to gateway name if not provided
+		if projectName == "" {
+			projectName = name
+		}
+
 		noColor, err := cmd.Flags().GetBool("no-color")
 		if err != nil {
 			return err
@@ -43,9 +56,10 @@ Examples:
 			Name:           name,
 			Backends:       zosBackends,
 			TLSPassthrough: tls,
-			SolutionType:   name,
+			SolutionType:   projectName, // Use project name
 			FQDN:           fqdn,
 			NodeID:         node,
+			Network:        network,
 		}
 		cfg, err := config.GetUserConfig()
 		if err != nil {
