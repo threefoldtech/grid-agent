@@ -23,23 +23,65 @@ tfcmd deploy gateway name [flags]
 
 ### Network Flag Usage
 
-The `--network` flag is optional but important:
-- **Required** when backend uses private IP (10.x.x.x from WireGuard network)
-- **Optional** when backend uses public or planetary IP
+The `--network` flag is optional but important for gateway-backend connectivity:
 
-**Example with private IP backend**:
+**IMPORTANT: Gateway must be able to reach your backend. Choose ONE option:**
+
+#### 1️⃣ SAME NETWORK (Recommended for multi-VM)
+Deploy gateway and VM on the same network using private IPs:
+
 ```bash
-tfcmd deploy gateway name --name mygw --node 11 \
+# Deploy VM first
+tfcmd deploy vm --name webapp --project-name myapp --ssh ~/.ssh/id_rsa.pub
+
+# Deploy gateway on same network
+tfcmd deploy gateway name --name api --node 11 \
   --backends http://10.20.2.2:8080 \
-  --network myvmnetwork \
+  --network myappnetwork \
   --project-name myapp
 ```
 
-**Example with public IP backend**:
+#### 2️⃣ SAME NODE (Simplest option)
+Deploy gateway and VM on the same node:
+
 ```bash
-tfcmd deploy gateway name --name mygw --node 11 \
+# Deploy VM on specific node
+tfcmd deploy vm --name webapp --node 11 --ssh ~/.ssh/id_rsa.pub
+
+# Deploy gateway on same node
+tfcmd deploy gateway name --name api --node 11 \
+  --backends http://10.20.2.2:8080
+```
+
+#### 3️⃣ PUBLIC IP (Cross-farm deployment)
+Use VM's public IP as backend:
+
+```bash
+# Deploy VM with public IP
+tfcmd deploy vm --name webapp --ipv4 --ssh ~/.ssh/id_rsa.pub
+
+# Deploy gateway using VM's public IP
+tfcmd deploy gateway name --name api --node 11 \
   --backends http://203.0.113.1:8080
 ```
+
+#### 4️⃣ PLANETARY/MYCELIUM IP (Cross-network)
+Use planetary or mycelium IP as backend:
+
+```bash
+# Deploy VM (get planetary IP from get vm output)
+tfcmd deploy vm --name webapp --ssh ~/.ssh/id_rsa.pub
+tfcmd get vm webapp --project-name vm/webapp  # Note planetary IP
+
+# Deploy gateway using planetary IP
+tfcmd deploy gateway name --name api --node 11 \
+  --backends http://302:9e63:7d43:b742:c2e0:ab69:e101:8032:8080
+```
+
+**Network Flag Requirements:**
+- **Required** when backend uses private IP (10.x.x.x from same network)
+- **Optional** when backend uses public, planetary, or mycelium IP
+- **Must match** the VM's project name when using `--network`
 
 Example:
 
