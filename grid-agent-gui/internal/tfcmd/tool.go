@@ -61,60 +61,79 @@ func (t *Tool) Description() tools.ToolDescriptor {
   "arguments": ["tfcmd", "deploy", "vm", "--name", "myvm"],
   "explanation": "explain why you need to execute this command"
 }`,
-		Instructions: fmt.Sprintf(`Use this tool to interact with the ThreeFold Grid.
-- Deploy and manage VMs, Kubernetes clusters, gateways, and ZDBs
-- Query and cancel contracts
-- All tfcmd commands are available
+		Instructions: fmt.Sprintf(`Execute ThreeFold Grid CLI commands using the provided schema.
 
-VALIDATION RULES:
-- Check that ALL required flags are provided (look for "required": true in the schema)
-- Check that ALL required positional arguments are provided (look for "args" in the schema)
-- Evaluate the 'Mutually Exclusive Flags' and 'Flag Groups' sections for the target subcommand.
-- If any required flags or arguments are missing, ask the user first
-- resources names must contain only letters and numbers
-- Always remember that deploy kubernetes|vm --ssh flag takes the file path not the file content
+VALIDATION CHECKLIST:
+- You MUST use alphanumeric only for deployment and project names
+- You MUST provide all required flags (check "required": true in schema)
+- You MUST provide required positional args (check "args" in schema)  
+- You MUST satisfy flag groups (see FLAG GROUPS below)
+- You MUST respect mutually exclusive flags (see EXCLUSIONS below)
+- You MUST use file path for --ssh flag, not key content
+
+CRITICAL FLAG RULES:
 
 FLAG GROUPS (must be set together):
-- deploy vm: if --flist is provided, --entrypoint MUST also be provided
+- deploy vm: --flist + --entrypoint (both required if either is used)
 
-MUTUALLY EXCLUSIVE FLAGS (only ONE can be set):
-- deploy vm: --node OR --farm (not both)
-- deploy kubernetes: --master-node OR --master-farm (not both)
-- deploy kubernetes: --workers-nodes OR --workers-farm (not both)
-- deploy gateway name: --node OR --farm (not both)
-- deploy zdb: --node OR --farm (not both)
+EXCLUSIONS (only ONE can be set):
+- deploy vm: --node OR --farm (never both)
+- deploy kubernetes: --master-node OR --master-farm
+- deploy kubernetes: --workers-nodes OR --workers-farm  
+- deploy gateway name: --node OR --farm
+- deploy gateway fqdn: --node OR --farm
+- deploy zdb: --node OR --farm
 
-BOOLEAN FLAG SYNTAX:
-- To enable: --flag or --flag=true
-- To disable: --flag=false (MUST use = sign)
+BOOLEAN FLAGS:
+- Enable: --flag or --flag=true
+- Disable: --flag=false (equals sign REQUIRED)
 - WRONG: --mycelium false
-- CORRECT: --mycelium=false
+- RIGHT: --mycelium=false
 
-SSH KEYS IN ENV VARS:
-- Some flists require SSH key as ENV VAR (e.g., SSH_KEY, pub_key)
-- For ENV VAR: pass the actual key CONTENT, not the file path
+SSH & ENVIRONMENT:
+- --ssh flag: file path (e.g., ~/.ssh/id_rsa.pub)
+- ENV vars like SSH_KEY: actual key content, not file path
 
-CANCEL/DELETE:
-- By name: tfcmd cancel <deployment-name> (preferred for single deployments)
-- By contract: tfcmd cancel contracts <contract-id>
-- Cancel all: tfcmd cancel contracts -a (REQUIRES explicit user confirmation!)
 
-OTHER RELEVANT INFORMATION:
-- Don't Ask user for his twin ID, instead look it up as it it usually can be seen in the output of tfcmd, such "get contracts", etc.
-- Always use --disable-sentry with any deploy commands unless user specified otherwise
+PRO TIPS:
+- Find twin ID from "get contracts" output - don't ask user
+
+DOMAIN PLANNING PATTERN (breaks circular dependency):
+1. List available gateways and pick node:
+   tfcmd list gateways name --farm 1
+
+2. Plan your full domain (gateway domain + your subdomain):
+   If gateway shows: "gent01.dev.grid.tf"
+   Your planned domain: "myapp.gent01.dev.grid.tf"
+
+3. Deploy VM with planned domain in env vars:
+   tfcmd deploy vm --name api --project-name myapp --env DOMAIN=myapp.gent01.dev.grid.tf
+
+4. Get VM IP after deployment:
+   tfcmd get vm api --project-name myapp
+   Note the private IP: e.g., 10.20.2.2
+
+5. Deploy gateway to planned node with backend IP:
+   tfcmd deploy gateway name --name myapp --node <gateway-node-id> --backends http://10.20.2.2:8080 --project-name myapp
+
+This allows configuring app with domain before gateway exists!
 
 %s`, schemaJSON),
 		Examples: []string{
 			`{
   "toolName": "tfcmd",
-  "arguments": ["tfcmd", "list"]
+  "arguments": ["tfcmd", "list", "gateways", "name"]
+}`,
+			`{
+  "toolName": "tfcmd", 
+  "arguments": ["tfcmd", "deploy", "vm", "--name", "myvm", "--ssh", "~/.ssh/id_rsa.pub", "--cpu", "2", "--memory", "4"]
 }`,
 			`{
   "toolName": "tfcmd",
-  "arguments": ["tfcmd", "deploy", "vm", "--name", "myvm", "--ssh", "~/.ssh/id_rsa.pub"]
+  "arguments": ["tfcmd", "deploy", "gateway", "name", "--name", "myapp", "--node", "11", "--backends", "http://10.20.2.2:8080", "--network", "mynetwork", "--project-name", "myapp"]
 }`,
 		},
-		ProgressText: "⚡ Command Executed",
+		ProgressText: "Command Executed",
 		ExportPrefix: "Command:",
 	}
 }

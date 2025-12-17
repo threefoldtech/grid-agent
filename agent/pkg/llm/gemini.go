@@ -40,7 +40,7 @@ func NewGeminiProvider(apiKey string, modelName string) (*GeminiProvider, error)
 	}
 
 	if modelName == "" {
-		config.ModelName = "gemini-2.5-flash"
+		config.ModelName = "gemini-3-flash-preview"
 	}
 
 	return NewGeminiProviderWithConfig(apiKey, config)
@@ -59,7 +59,7 @@ func NewGeminiProviderWithConfig(apiKey string, config Config) (*GeminiProvider,
 	}
 
 	if config.ModelName == "" {
-		config.ModelName = "gemini-2.5-flash"
+		config.ModelName = "gemini-3-flash-preview"
 	}
 
 	provider := &GeminiProvider{

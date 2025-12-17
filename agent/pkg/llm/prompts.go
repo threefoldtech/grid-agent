@@ -4,7 +4,7 @@ package llm
 const JSONFormatInstructions = `
 ## RESPONSE FORMAT STANDARDS
 
-You **MUST** reply with a **SINGLE** JSON object or an **ARRAY** of JSON objects. **NO extra text or formatting** outside of the JSON structure is allowed.
+You **MUST** reply with a **SINGLE** JSON object. **NO extra text or formatting** outside of the JSON structure is allowed.
 
 The available tools and their specific formats are described in the relevant section below.
 
@@ -29,6 +29,7 @@ Use this format for your complete, final response to the user:
   "answer": "Your complete, formatted response to the user here.",
   "explanation": "Relevant context, reasoning, or command results supporting the answer."
 }
+
 
 ## CRITICAL RULES
 
