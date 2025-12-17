@@ -21,9 +21,25 @@ var deployGatewayNameCmd = &cobra.Command{
 
 Creates a subdomain on a gateway node that proxies to your backend.
 
+To avoid name collisions, you can follow this convention to creates unique subdomain: solution prefix + twin ID + a chosen name. (e.g., wp41myapp)
+
+IMPORTANT: Gateway must be able to reach your backend. Choose ONE option:
+
+- SAME NETWORK: Deploy gateway and VM on same network
+   tfcmd deploy vm --name webapp --project-name myapp --ssh ~/.ssh/id_rsa.pub
+   tfcmd deploy gateway name --name api --node 11 --backends http://10.20.2.2:8080 --network myappnetwork --project-name myapp
+
+- SAME NODE: Deploy gateway and VM on same node
+   tfcmd deploy vm --name webapp --node 11 --ssh ~/.ssh/id_rsa.pub
+   tfcmd deploy gateway name --name api --node 11 --backends http://10.20.2.2:8080
+
+- PUBLIC IP: Use VM's public IP, planetary or mycelium IP as backend
+   tfcmd deploy vm --name webapp --ipv4 --ssh ~/.ssh/id_rsa.pub
+   tfcmd deploy gateway name --name api --node 11 --backends http://<VM-PUBLIC-IP>:8080
+
 Examples:
-  # Deploy gateway with backend
-  tfcmd deploy gateway name --name myapp --node 11 --backends http://10.20.2.2:8080`,
+  # Option 1: Same network (recommended for multi-VM)
+  tfcmd deploy gateway name --name myapp --node 11 --backends http://10.20.2.2:8080 --network myappnetwork --project-name myapp`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, tls, zosBackends, node, network, projectName, err := parseCommonGatewayFlags(cmd)
 		if err != nil {

@@ -104,16 +104,12 @@ Use --project-name to organize VMs into projects and --network to deploy
 multiple VMs on the same network.
 
 **Disks vs Volumes**:
-- Disks: Local SSD storage on the node (faster, not shared between VMs)
-- Volumes: Distributed QSFS storage (slower, can be shared across VMs)
+- Disks (zmount): Legacy sparse files on host filesystem (slower, being deprecated)
+- Volumes: Modern btrfs subvolumes with quota (faster, future of storage)
 
-Use disks for: databases, caches, temporary files
-Use volumes for: shared data, backups, large files
+Key advantages of volumes: better performance, snapshots, live resize, better caching
+Recommendation: Use volumes for all new deployments, disks only for backward compatibility
 
-**Network Limitations**:
-IMPORTANT: Networks can only span nodes within the same farm. Nodes in different
-farms cannot share a network. For cross-farm deployments, use separate networks
-or planetary network IPs for inter-VM communication.
 
 Examples:
   # Deploy single VM with default settings
@@ -140,7 +136,7 @@ Examples:
 		}
 		sshKey, err := os.ReadFile(sshFile)
 		if err != nil {
-			log.Fatal().Err(err).Send()
+			return fmt.Errorf("failed to read SSH key file '%s': %w", sshFile, err)
 		}
 		env["SSH_KEY"] = string(sshKey)
 		node, err := cmd.Flags().GetUint32("node")
@@ -194,9 +190,6 @@ Examples:
 		if err != nil {
 			return err
 		}
-		if len(gpus) > 0 && node == 0 {
-			log.Fatal().Msg("must specify node ID when using GPUs")
-		}
 
 		ipv4, err := cmd.Flags().GetBool("ipv4")
 		if err != nil {
@@ -227,7 +220,7 @@ Examples:
 		if mycelium {
 			seed, err = workloads.RandomMyceliumIPSeed()
 			if err != nil {
-				log.Fatal().Err(err).Send()
+				return fmt.Errorf("failed to generate mycelium IP seed: %w", err)
 			}
 		}
 
@@ -263,7 +256,7 @@ Examples:
 
 		cfg, err := config.GetUserConfig()
 		if err != nil {
-			log.Fatal().Err(err).Send()
+			return fmt.Errorf("failed to get user config: %w", err)
 		}
 
 		opts := []deployer.PluginOpt{
@@ -279,7 +272,7 @@ Examples:
 		}
 		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, opts...)
 		if err != nil {
-			log.Fatal().Err(err).Send()
+			return fmt.Errorf("failed to create TFPluginClient: %w", err)
 		}
 
 		// if no public ips or yggdrasil then we should go for the light deployment
@@ -288,7 +281,7 @@ Examples:
 		if node != 0 {
 			isLight, err = isZos4Node(cmd.Context(), t.NcPool, t.SubstrateConn, node)
 			if err != nil {
-				log.Fatal().Err(err).Send()
+				return fmt.Errorf("failed to check if node %d supports light VMs: %w", node, err)
 			}
 		}
 

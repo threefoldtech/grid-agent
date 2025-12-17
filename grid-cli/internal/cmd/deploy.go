@@ -21,6 +21,15 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, d
 	var network workloads.ZNet
 	var err error
 
+	// Validate: deployment name must be unique within the project
+	exists, err := DeploymentExists(t, projectName, vm.Name)
+	if err != nil {
+		return workloads.VM{}, errors.Wrapf(err, "failed to check if deployment '%s' exists", vm.Name)
+	}
+	if exists {
+		return workloads.VM{}, fmt.Errorf("deployment '%s' already exists in project '%s'", vm.Name, projectName)
+	}
+
 	if existingNetworkName != "" {
 		// Use existing network
 		networkName = existingNetworkName
@@ -31,8 +40,6 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, d
 		if err != nil {
 			return workloads.VM{}, errors.Wrapf(err, "failed to load existing network '%s'", networkName)
 		}
-
-		// Add VM node to network if not already present
 		if !slices.Contains(network.Nodes, vm.NodeID) {
 			log.Info().Msgf("adding node %d to network '%s'", vm.NodeID, networkName)
 			network.Nodes = append(network.Nodes, vm.NodeID)
@@ -42,6 +49,9 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, d
 				key, err := workloads.RandomMyceliumKey()
 				if err != nil {
 					return workloads.VM{}, err
+				}
+				if network.MyceliumKeys == nil {
+					network.MyceliumKeys = make(map[uint32][]byte)
 				}
 				network.MyceliumKeys[vm.NodeID] = key
 			}
@@ -61,6 +71,15 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, d
 			baseName = projectName[idx+1:]
 		}
 		networkName = fmt.Sprintf("%snetwork", baseName)
+
+		// Validate: network name must be unique for this user
+		exists, existingProject, err := NetworkExistsForUser(t, networkName)
+		if err != nil {
+			return workloads.VM{}, errors.Wrapf(err, "failed to check if network '%s' exists", networkName)
+		}
+		if exists {
+			return workloads.VM{}, fmt.Errorf("network '%s' already exists in project '%s'. Use --network flag to join existing network or choose a different project name", networkName, existingProject)
+		}
 
 		network, err = buildNetwork(networkName, projectName, []uint32{vm.NodeID}, len(vm.MyceliumIPSeed) != 0)
 		if err != nil {
@@ -103,6 +122,15 @@ func DeployVMLight(ctx context.Context, t deployer.TFPluginClient, vm workloads.
 	var network workloads.ZNetLight
 	var err error
 
+	// Validate: deployment name must be unique within the project
+	exists, err := DeploymentExists(t, projectName, vm.Name)
+	if err != nil {
+		return workloads.VMLight{}, errors.Wrapf(err, "failed to check if deployment '%s' exists", vm.Name)
+	}
+	if exists {
+		return workloads.VMLight{}, fmt.Errorf("deployment '%s' already exists in project '%s'", vm.Name, projectName)
+	}
+
 	if existingNetworkName != "" {
 		// Use existing network
 		networkName = existingNetworkName
@@ -124,6 +152,9 @@ func DeployVMLight(ctx context.Context, t deployer.TFPluginClient, vm workloads.
 			if err != nil {
 				return workloads.VMLight{}, err
 			}
+			if network.MyceliumKeys == nil {
+				network.MyceliumKeys = make(map[uint32][]byte)
+			}
 			network.MyceliumKeys[vm.NodeID] = key
 
 			// Redeploy network with new node
@@ -141,6 +172,15 @@ func DeployVMLight(ctx context.Context, t deployer.TFPluginClient, vm workloads.
 			baseName = projectName[idx+1:]
 		}
 		networkName = fmt.Sprintf("%snetwork", baseName)
+
+		// Validate: network name must be unique for this user
+		exists, existingProject, err := NetworkExistsForUser(t, networkName)
+		if err != nil {
+			return workloads.VMLight{}, errors.Wrapf(err, "failed to check if network '%s' exists", networkName)
+		}
+		if exists {
+			return workloads.VMLight{}, fmt.Errorf("network '%s' already exists in project '%s'. Use --network flag to join existing network or choose a different project name", networkName, existingProject)
+		}
 
 		network, err = buildNetworkLight(networkName, projectName, []uint32{vm.NodeID})
 		if err != nil {
@@ -239,6 +279,40 @@ func DeployKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, mas
 
 // DeployGatewayName deploys a gateway name
 func DeployGatewayName(ctx context.Context, t deployer.TFPluginClient, gateway workloads.GatewayNameProxy) (workloads.GatewayNameProxy, error) {
+	// If network is specified, ensure gateway node is part of the network
+	if gateway.Network != "" {
+		log.Info().Msgf("checking if gateway node %d is part of network '%s'", gateway.NodeID, gateway.Network)
+
+		// Load the network - use SolutionType (project name) to find it
+		network, err := GetNetwork(ctx, t, gateway.SolutionType, gateway.Network)
+		if err != nil {
+			return workloads.GatewayNameProxy{}, errors.Wrapf(err, "failed to load network '%s'", gateway.Network)
+		}
+
+		// Check if gateway node is already in the network
+		if !slices.Contains(network.Nodes, gateway.NodeID) {
+			log.Info().Msgf("extending network '%s' to include gateway node %d", gateway.Network, gateway.NodeID)
+			network.Nodes = append(network.Nodes, gateway.NodeID)
+
+			// Add mycelium key for the gateway node
+			key, err := workloads.RandomMyceliumKey()
+			if err != nil {
+				return workloads.GatewayNameProxy{}, err
+			}
+			if network.MyceliumKeys == nil {
+				network.MyceliumKeys = make(map[uint32][]byte)
+			}
+			network.MyceliumKeys[gateway.NodeID] = key
+
+			// Redeploy network with gateway node
+			log.Info().Msg("updating network")
+			err = t.NetworkDeployer.Deploy(ctx, &network)
+			if err != nil {
+				return workloads.GatewayNameProxy{}, errors.Wrapf(err, "failed to extend network to gateway node %d", gateway.NodeID)
+			}
+		}
+	}
+
 	log.Info().Msg("deploying gateway name")
 	err := t.GatewayNameDeployer.Deploy(ctx, &gateway)
 	if err != nil {
@@ -250,6 +324,40 @@ func DeployGatewayName(ctx context.Context, t deployer.TFPluginClient, gateway w
 
 // DeployGatewayFQDN deploys a gateway fqdn
 func DeployGatewayFQDN(ctx context.Context, t deployer.TFPluginClient, gateway workloads.GatewayFQDNProxy) error {
+	// If network is specified, ensure gateway node is part of the network
+	if gateway.Network != "" {
+		log.Info().Msgf("checking if gateway node %d is part of network '%s'", gateway.NodeID, gateway.Network)
+
+		// Load the network - use SolutionType (project name) to find it
+		network, err := GetNetwork(ctx, t, gateway.SolutionType, gateway.Network)
+		if err != nil {
+			return errors.Wrapf(err, "failed to load network '%s'", gateway.Network)
+		}
+
+		// Check if gateway node is already in the network
+		if !slices.Contains(network.Nodes, gateway.NodeID) {
+			log.Info().Msgf("extending network '%s' to include gateway node %d", gateway.Network, gateway.NodeID)
+			network.Nodes = append(network.Nodes, gateway.NodeID)
+
+			// Add mycelium key for the gateway node
+			key, err := workloads.RandomMyceliumKey()
+			if err != nil {
+				return err
+			}
+			if network.MyceliumKeys == nil {
+				network.MyceliumKeys = make(map[uint32][]byte)
+			}
+			network.MyceliumKeys[gateway.NodeID] = key
+
+			// Redeploy network with gateway node
+			log.Info().Msg("updating network")
+			err = t.NetworkDeployer.Deploy(ctx, &network)
+			if err != nil {
+				return errors.Wrapf(err, "failed to extend network to gateway node %d", gateway.NodeID)
+			}
+		}
+	}
+
 	log.Info().Msg("deploying gateway fqdn")
 	err := t.GatewayFQDNDeployer.Deploy(ctx, &gateway)
 	if err != nil {
