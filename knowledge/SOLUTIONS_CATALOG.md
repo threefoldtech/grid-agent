@@ -109,7 +109,7 @@ Variable based on leader and worker configurations.
 ### Additional Requirements
 
 - **IPv4:** Required for leader
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Must be FQDN not Subdomain. Uses wildcard DNS pointing to leader's public IPv4
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
 
@@ -176,7 +176,7 @@ Variable based on leader and worker configurations.
 ### Additional Requirements
 
 - **IPv4/IPv6:** Optional
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Gateway Port: `80`
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
 
@@ -217,7 +217,7 @@ Variable based on leader and worker configurations.
 ### Additional Requirements
 
 - **IPv4/IPv6:** Optional
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Gateway Port: `88`
 - **SMTP:** Required
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
@@ -254,7 +254,7 @@ Variable based on leader and worker configurations.
 ### Additional Requirements
 
 - **IPv4/IPv6:** Required (at least one)
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Gateway Port: `80`
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
 
@@ -339,7 +339,7 @@ Variable based on leader and worker configurations.
 ### Additional Requirements
 
 - **IPv4/IPv6:** Optional
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Gateway Port: `80`
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
 
@@ -378,7 +378,7 @@ No additional disks required (uses root filesystem).
 ### Additional Requirements
 
 - **IPv4/IPv6:** Required (at least one)
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Gateway Port: `3000`
 - **SMTP:** Optional
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
@@ -415,7 +415,7 @@ No additional disks required (uses root filesystem).
 ### Additional Requirements
 
 - **IPv4/IPv6:** Optional
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Gateway Port: `80`
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
 
@@ -449,7 +449,7 @@ No additional disks required (uses root filesystem).
 ### Additional Requirements
 
 - **IPv4/IPv6:** Required (at least one)
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Gateway Port: `80`
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
 
@@ -539,7 +539,7 @@ Variable based on configuration.
 ### Additional Requirements
 
 - **IPv4/IPv6:** Optional (IPv4 required if SMTP enabled)
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Gateway Port: `8000`
 - **SMTP:** Optional
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
@@ -627,7 +627,7 @@ Custom environment variables can be defined.
 ### Additional Requirements
 
 - **IPv4/IPv6:** Optional
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Gateway Port: `80`
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
 
@@ -700,7 +700,7 @@ Custom environment variables can be defined.
 
 - **IPv4:** Required
 - **IPv6:** Required
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Gateway Port: `34416`
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
 
@@ -732,7 +732,7 @@ No additional disks required (uses root filesystem).
 ### Additional Requirements
 
 - **IPv4/IPv6:** Required (at least one)
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Gateway Port: `8080`
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
 
@@ -764,7 +764,7 @@ No additional disks required (uses root filesystem).
 ### Additional Requirements
 
 - **IPv4/IPv6:** Required (at least one)
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Gateway Port: `8080`
 - **GPU:** Optional
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
@@ -837,7 +837,7 @@ No additional disks required (uses root filesystem).
 ### Additional Requirements
 
 - **IPv4/IPv6:** Optional
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Gateway Port: `80`
 - **SMTP:** Optional
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
@@ -872,7 +872,7 @@ Uses standard solution flavors (Small/Medium/Large).
 ### Additional Requirements
 
 - **IPv4/IPv6:** Optional
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Gateway Port: `9000`
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
 
@@ -972,7 +972,7 @@ Uses standard solution flavors (Small/Medium/Large).
 ### Additional Requirements
 
 - **IPv4/IPv6:** Optional
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Gateway Port: `9000`
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
 
@@ -1006,7 +1006,7 @@ Uses standard solution flavors (Small/Medium/Large).
 ### Additional Requirements
 
 - **IPv4/IPv6:** Optional
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Gateway Port: `4444`
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
 
@@ -1048,7 +1048,7 @@ Uses standard solution flavors (Small/Medium/Large).
 ### Additional Requirements
 
 - **IPv4/IPv6:** Optional (IPv4 required if SMTP enabled)
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Gateway Port: `9000`
 - **SMTP:** Optional
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
@@ -1180,7 +1180,7 @@ Custom environment variables can be defined.
 ### Additional Requirements
 
 - **IPv4/IPv6:** Optional
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Gateway Port: `80`
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
 
@@ -1213,7 +1213,7 @@ Custom environment variables can be defined.
 ### Additional Requirements
 
 - **IPv4/IPv6:** Required (for Aydo to work with ONLYOFFICE)
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Gateway Port: (not yet in playground)
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
 
@@ -1392,7 +1392,7 @@ Custom environment variables can be defined.
 ### Additional Requirements
 
 - **IPv4/IPv6:** Required (for Fediverse communication)
-- **Gateway/Domain:** Yes (required)
+- **Gateway/Domain:** Yes (required) - Gateway Port: (not yet in playground)
 - **Planetary Network:** Optional
 - **Mycelium:** Optional
 
