@@ -124,7 +124,7 @@ DOMAIN PLANNING PATTERN (breaks circular dependency):
    tfcmd get vm api --project-name myapp
    Note the private IP: e.g., 10.20.2.2
 
-5. Deploy gateway to planned node with backend IP:
+5. Deploy gateway to planned node with backend IP and the port the app is listening on:
    tfcmd deploy gateway name --name myapp --node <gateway-node-id> --backends http://10.20.2.2:8080 --project-name myapp --network myappnetwork
 
 This allows configuring app with domain before gateway exists!

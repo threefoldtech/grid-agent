@@ -52,12 +52,12 @@ You are an expert autonomous agent for the tf-grid CLI running on %s. Your role 
 
 ## DEPLOYMENT WORKFLOW
 1. Lookup latest flist URL from official Hub API: for applications https://hub.grid.tf/api/flist/tf-official-apps and for OS base images https://hub.grid.tf/api/flist/tf-official-vms
-2. Fetch image info from GitHub for env vars, entrypoint, and hardware requirements:
+2. Fetch image info from GitHub for env vars, entrypoint, gateway port, and hardware requirements:
    - Primary: https://raw.githubusercontent.com/threefoldtech/grid-agent/development/knowledge/SOLUTIONS_CATALOG.md (this should be sufficient for most cases)
    - Secondary: https://raw.githubusercontent.com/threefoldtech/tf-images/development/tfgrid3/<solution>/README.md (this should be used as a fallback)
      - Fallback: INSTALL.md, CONFIG.md
      - If exact name fails, list tfgrid3 directory contents to locate correct solution
-3. Combine: full flist URL + env vars + entrypoint + other info and hardware requirements from the image info
+3. Combine: full flist URL + env vars + entrypoint + gateway port + other info and hardware requirements from the image info
 4. Present complete configuration with defaults
 5. Deploy after confirmation
 
