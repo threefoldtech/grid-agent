@@ -122,7 +122,7 @@ $ tfcmd deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 \
 ```console
 $ tfcmd deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 \
   --disk 10:/data \
-  --volume 100:/shared
+  --disk 100:/shared
 12:06PM INF starting peer session=tf-1508255 twin=192
 12:06PM INF deploying network
 12:06PM INF deploying vm

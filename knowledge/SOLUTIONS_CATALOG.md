@@ -24,7 +24,7 @@ This document provides a comprehensive list of all solutions supported in the Th
 - **Memory:** Variable based on node type (4-8 GB)
 - **Storage:** Variable based on node type (100-1500 GB)
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -57,7 +57,7 @@ This document provides a comprehensive list of all solutions supported in the Th
 - **Medium:** CPU: 4, Memory: 8 GB, Disk: 100 GB
 - **Large:** CPU: 8, Memory: 16 GB, Disk: 200 GB
 
-### Disk/Volumes
+### Disk
 
 No additional disks required (uses root filesystem).
 
@@ -100,7 +100,7 @@ No additional disks required (uses root filesystem).
 
 Variable based on leader and worker configurations.
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -167,7 +167,7 @@ Variable based on leader and worker configurations.
 - **Medium:** CPU: 4, Memory: 16 GB, Disk: 500 GB
 - **Large:** CPU: 8, Memory: 32 GB, Disk: 1000 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -208,7 +208,7 @@ Variable based on leader and worker configurations.
 - **Medium:** CPU: 2, Memory: 4 GB, Disk: 50 GB
 - **Large:** CPU: 4, Memory: 16 GB, Disk: 100 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -245,7 +245,7 @@ Variable based on leader and worker configurations.
 - **Medium:** CPU: 2, Memory: 16 GB, Disk: 500 GB
 - **Large:** CPU: 4, Memory: 32 GB, Disk: 1000 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -284,7 +284,7 @@ Variable based on leader and worker configurations.
 - **Medium:** CPU: 2, Memory: 4 GB, Disk: 50 GB
 - **Large:** CPU: 4, Memory: 16 GB, Disk: 100 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -330,7 +330,7 @@ Variable based on leader and worker configurations.
 - **Small:** CPU: 1, Memory: 2 GB, Disk: 50 GB
 - **Medium:** CPU: 2, Memory: 4 GB, Disk: 100 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -371,7 +371,7 @@ Variable based on leader and worker configurations.
 - **Medium:** CPU: 2, Memory: 4 GB, Disk: 50 GB
 - **Large:** CPU: 4, Memory: 16 GB, Disk: 100 GB
 
-### Disk/Volumes
+### Disk
 
 No additional disks required (uses root filesystem).
 
@@ -406,7 +406,7 @@ No additional disks required (uses root filesystem).
 - **Medium:** CPU: 4, Memory: 8 GB, Disk: 500 GB
 - **Large:** CPU: 4, Memory: 16 GB, Disk: 1000 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -440,7 +440,7 @@ No additional disks required (uses root filesystem).
 - **Medium:** CPU: 4, Memory: 16 GB, Disk: 500 GB
 - **Large:** CPU: 8, Memory: 32 GB, Disk: 1000 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -471,7 +471,7 @@ No additional disks required (uses root filesystem).
 
 Variable based on master and worker configurations.
 
-### Disk/Volumes
+### Disk
 
 Variable based on configuration.
 
@@ -530,7 +530,7 @@ Variable based on configuration.
 - **Medium:** CPU: 2, Memory: 4 GB, Disk: 50 GB
 - **Large:** CPU: 4, Memory: 16 GB, Disk: 100 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -573,7 +573,7 @@ Custom environment variables can be defined.
 - **Medium:** CPU: 2, Memory: 4 GB, Disk: 50 GB
 - **Large:** CPU: 4, Memory: 16 GB, Disk: 100 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -618,7 +618,7 @@ Custom environment variables can be defined.
 - **Medium:** CPU: 4, Memory: 8 GB, Disk: 500 GB
 - **Large:** CPU: 4, Memory: 16 GB, Disk: 1000 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -690,7 +690,7 @@ Custom environment variables can be defined.
 - **Medium:** CPU: 8, Memory: 16 GB, Disk: 1000 GB
 - **Large:** CPU: 8, Memory: 32 GB, Disk: 2000 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -725,7 +725,7 @@ Custom environment variables can be defined.
 - **Medium:** CPU: 2, Memory: 4 GB, Disk: 50 GB
 - **Large:** CPU: 4, Memory: 16 GB, Disk: 100 GB
 
-### Disk/Volumes
+### Disk
 
 No additional disks required (uses root filesystem).
 
@@ -757,7 +757,7 @@ No additional disks required (uses root filesystem).
 - **Medium:** CPU: 8, Memory: 32 GB, Disk: 250 GB
 - **Large:** CPU: 16, Memory: 64 GB, Disk: 500 GB
 
-### Disk/Volumes
+### Disk
 
 No additional disks required (uses root filesystem).
 
@@ -828,7 +828,7 @@ No additional disks required (uses root filesystem).
 - **Medium:** CPU: 4, Memory: 16 GB, Disk: 500 GB
 - **Large:** CPU: 8, Memory: 32 GB, Disk: 1000 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -863,7 +863,7 @@ No additional disks required (uses root filesystem).
 
 Uses standard solution flavors (Small/Medium/Large).
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -900,7 +900,7 @@ Uses standard solution flavors (Small/Medium/Large).
 - **Root Filesystem:** Calculated
 - **Docker Disk:** 10 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -963,7 +963,7 @@ Uses standard solution flavors (Small/Medium/Large).
 - **Small:** CPU: 1, Memory: 2 GB, Disk: 50 GB
 - **Medium:** CPU: 2, Memory: 4 GB, Disk: 100 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -997,7 +997,7 @@ Uses standard solution flavors (Small/Medium/Large).
 - **Small:** CPU: 1, Memory: 2 GB, Disk: 50 GB
 - **Medium:** CPU: 2, Memory: 4 GB, Disk: 100 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -1039,7 +1039,7 @@ Uses standard solution flavors (Small/Medium/Large).
 - **Small:** CPU: 2, Memory: 4 GB, Disk: 100 GB
 - **Medium:** CPU: 4, Memory: 8 GB, Disk: 150 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -1075,7 +1075,7 @@ Custom environment variables can be defined.
 - **Medium:** CPU: 2, Memory: 4 GB, Disk: 50 GB
 - **Large:** CPU: 4, Memory: 16 GB, Disk: 100 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -1134,7 +1134,7 @@ Custom environment variables can be defined.
 - **Medium:** CPU: 2, Memory: 4 GB, Disk: 50 GB
 - **Large:** CPU: 4, Memory: 16 GB, Disk: 100 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -1171,7 +1171,7 @@ Custom environment variables can be defined.
 - **Medium:** CPU: 2, Memory: 4 GB, Disk: 50 GB
 - **Large:** CPU: 4, Memory: 16 GB, Disk: 100 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -1204,7 +1204,7 @@ Custom environment variables can be defined.
 - **Medium:** CPU: 2, Memory: 4 GB, Disk: 50 GB
 - **Large:** CPU: 4, Memory: 8 GB, Disk: 100 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -1247,7 +1247,7 @@ Custom environment variables can be defined.
 - **Medium:** CPU: 2, Memory: 4 GB, Disk: 50 GB
 - **Large:** CPU: 4, Memory: 8 GB, Disk: 100 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -1287,7 +1287,7 @@ Custom environment variables can be defined.
 - **Medium:** CPU: 2, Memory: 4 GB, Disk: 50 GB
 - **Large:** CPU: 4, Memory: 8 GB, Disk: 100 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -1332,7 +1332,7 @@ Custom environment variables can be defined.
 - **Medium:** CPU: 2, Memory: 4 GB, Disk: 100 GB
 - **Large:** CPU: 4, Memory: 8 GB, Disk: 200 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -1383,7 +1383,7 @@ Custom environment variables can be defined.
 - **Large:** CPU: 4, Memory: 8 GB, Disk: 200 GB
 - **Extra Large:** CPU: 8, Memory: 16 GB, Disk: 500 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -1424,7 +1424,7 @@ Custom environment variables can be defined.
 - **Medium:** CPU: 2, Memory: 4 GB, Disk: 50 GB
 - **Large:** CPU: 4, Memory: 8 GB, Disk: 100 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -1466,7 +1466,7 @@ Custom environment variables can be defined.
 - **Medium:** CPU: 2, Memory: 4 GB, Disk: 50 GB
 - **Large:** CPU: 4, Memory: 8 GB, Disk: 100 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
@@ -1511,7 +1511,7 @@ Custom environment variables can be defined.
 - **Small:** CPU: 1, Memory: 2 GB, Disk: 25 GB
 - **Medium:** CPU: 2, Memory: 4 GB, Disk: 50 GB
 
-### Disk/Volumes
+### Disk
 
 | Type | Size | Mount Point | Required |
 |------|------|-------------|----------|
