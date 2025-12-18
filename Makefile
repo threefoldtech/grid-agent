@@ -111,9 +111,9 @@ install-grid-cli: build-grid-cli ## Install grid-cli to system
 install-grid-agent-gui: build-grid-agent-gui ## Install grid-agent-gui to system
 ifeq ($(HOST_OS),Darwin)
 	@echo "$(CYAN)Installing grid-agent-gui.app to /Applications...$(NC)"
-	@rm -rf /Applications/grid-agent-gui.app
-	@cp -r $(GUI_DIR)/build/bin/grid-agent-gui.app /Applications/
-	@echo "$(GREEN)✓ Grid Agent GUI installed successfully to /Applications/grid-agent-gui.app$(NC)"
+	@rm -rf "/Applications/TF Grid Agent.app"
+	@cp -r $(GUI_DIR)/build/bin/grid-agent-gui.app "/Applications/TF Grid Agent.app"
+	@echo "$(GREEN)✓ Grid Agent GUI installed successfully to /Applications/TF Grid Agent.app$(NC)"
 else ifeq ($(HOST_OS),Linux)
 	@echo "$(CYAN)Installing grid-agent-gui to $(INSTALL_BIN)...$(NC)"
 	@mkdir -p $(INSTALL_BIN)
