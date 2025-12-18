@@ -41,17 +41,6 @@ When deploying a VM:
 - The network name is derived from the project name (e.g., project `vm/myapp` creates network `myappnetwork`)
 - Multiple VMs can share the same project and network by using the same `--project-name` and `--network`
 
-### Network Limitations
-
-**IMPORTANT**: Networks can only span nodes within the same farm.
-
-- ✅ Nodes 11 and 14 (both in Farm 1) can share a network
-- ❌ Node 327 (Farm 2) cannot join Farm 1's network
-
-For cross-farm deployments:
-
-- Use separate networks per farm
-- Use planetary network IPs for inter-VM communication
 
 ### Disks vs Volumes
 
@@ -74,9 +63,8 @@ Future:  bcachefs ⏳ Coming Soon
 
 **Recommendation:**
 
-- Use **disks** for all new deployments (more reliable and stable)
-- Use **volumes** only if you explicitly need their advanced features
-
+- Use **disks** for all new deployments to ensure maximum compatibility and stability.
+- Use **volumes** only when their advanced features are explicitly required.
 > **Note**: QSFS is a separate distributed storage technology and is NOT related to volumes. Volumes are local storage.
 
 Example:
@@ -117,12 +105,12 @@ $ tfcmd deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 \
 12:07PM INF vm mycelium ip: 544:b74f:ceef:cc7e:ff0f:6b18:921f:8031
 ```
 
-- Deploying VM with mixed disks and volumes
+- Deploying VM with mixed disks and volumes (())
 
 ```console
 $ tfcmd deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 \
   --disk 10:/data \
-  --disk 100:/shared
+  --volume 100:/shared
 12:06PM INF starting peer session=tf-1508255 twin=192
 12:06PM INF deploying network
 12:06PM INF deploying vm
@@ -130,7 +118,7 @@ $ tfcmd deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 \
 12:07PM INF vm mycelium ip: 544:b74f:ceef:cc7e:ff0f:6b18:921f:8031
 ```
 
-- Backward compatible: deploying VM with single disk (old format)
+- deploying VM with disk
 
 ```console
 $ tfcmd deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 --disk 10
