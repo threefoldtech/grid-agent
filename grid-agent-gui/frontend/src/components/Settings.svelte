@@ -8,6 +8,7 @@
     DeleteProfile,
     UpdateAdvancedSettings,
     UpdateGridSettings,
+    GetVersion,
   } from "../../wailsjs/go/main/App.js";
   import {
     settingsStore,
@@ -59,6 +60,9 @@
   let showDeleteModal = false;
   let profileToDelete: any = null;
 
+  // Version
+  let appVersion = "";
+
   // Track modal visibility for latch
   let prevShow = false;
 
@@ -95,6 +99,9 @@
         gridNetwork = $settingsStore.network || "main";
         originalMnemonics = gridMnemonics;
         originalNetwork = gridNetwork;
+
+        // Load version
+        GetVersion().then(v => appVersion = v);
       }
     }
     prevShow = show;
@@ -413,6 +420,13 @@
             <span>Grid Configuration</span>
           </button>
         </nav>
+
+        <!-- Version Display in Sidebar Footer -->
+        {#if appVersion}
+          <div class="sidebar-footer">
+            <span class="version-badge">{appVersion}</span>
+          </div>
+        {/if}
       </aside>
 
       <!-- Main Content Area -->
@@ -906,6 +920,7 @@
             {error}
           </div>
         {/if}
+
       </main>
     </div>
   </div>
@@ -1685,5 +1700,31 @@
     font-size: 0.9rem;
     color: var(--text-primary);
     font-weight: 500;
+  }
+
+  /* Sidebar Footer - Version Display */
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--border);
+    text-align: left;
+  }
+
+  .version-badge {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    display: inline-block;
+  }
+
+  /* Light theme override for version badge */
+  :global([data-theme="light"]) .version-badge {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border);
   }
 </style>
