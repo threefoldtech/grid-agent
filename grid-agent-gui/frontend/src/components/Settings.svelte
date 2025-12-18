@@ -35,6 +35,7 @@
   let isEditingApiKey = false;
   let tempApiKey = "";
   let modelDropdownOpen = false;
+  let showApiKey = false;
 
   // Track original values for change detection
   let originalApiKey = "";
@@ -46,6 +47,7 @@
   let isEditingMnemonic = false;
   let tempMnemonic = "";
   let networkDropdownOpen = false;
+  let showMnemonic = false;
 
   // Track original grid values for change detection
   let originalMnemonics = "";
@@ -711,13 +713,19 @@
                   <div class="api-key-display">
                     <input
                       type="text"
-                      value={advancedApiKey.length > 8
-                        ? advancedApiKey.slice(0, 4) +
-                          "*".repeat(Math.max(0, advancedApiKey.length - 8)) +
-                          advancedApiKey.slice(-4)
+                      value={showApiKey
+                        ? (advancedApiKey.length > 8
+                          ? advancedApiKey.slice(0, 4) + "****" + advancedApiKey.slice(-4)
+                          : "****")
                         : "*".repeat(advancedApiKey.length)}
                       disabled
                     />
+                    <button
+                      class="btn small outline"
+                      on:click={() => showApiKey = !showApiKey}
+                    >
+                      {showApiKey ? "Hide" : "Show"}
+                    </button>
                     <button
                       class="btn small secondary"
                       on:click={startApiKeyEdit}>Change</button
@@ -841,9 +849,23 @@
                   <div class="api-key-display">
                     <input
                       type="text"
-                      value={formatMnemonic(gridMnemonics)}
+                      value={showMnemonic
+                        ? (() => {
+                            const words = gridMnemonics.split(/\s+/);
+                            if (words.length > 4) {
+                              return words.slice(0, 2).join(" ") + " *** " + words.slice(-2).join(" ");
+                            }
+                            return "*** ***";
+                          })()
+                        : "*".repeat(gridMnemonics.split(/\s+/).length)}
                       disabled
                     />
+                    <button
+                      class="btn small outline"
+                      on:click={() => showMnemonic = !showMnemonic}
+                    >
+                      {showMnemonic ? "Hide" : "Show"}
+                    </button>
                     <button
                       class="btn small secondary"
                       on:click={startMnemonicEdit}>Change</button
@@ -1501,6 +1523,18 @@
   .btn.secondary:hover {
     background: var(--bg-secondary);
     border-color: var(--accent);
+  }
+
+  .btn.outline {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+
+  .btn.outline:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--accent);
+    color: var(--text-primary);
   }
 
   .btn.danger {
