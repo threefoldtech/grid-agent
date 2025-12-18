@@ -109,11 +109,16 @@ install-grid-cli: build-grid-cli ## Install grid-cli to system
 	@echo "$(YELLOW)Make sure $(INSTALL_BIN) is in your PATH$(NC)"
 
 install-grid-agent-gui: build-grid-agent-gui ## Install grid-agent-gui to system
+ifeq ($(HOST_OS),Darwin)
+	@echo "$(CYAN)Installing grid-agent-gui.app to /Applications...$(NC)"
+	@rm -rf /Applications/grid-agent-gui.app
+	@cp -r $(GUI_DIR)/build/bin/grid-agent-gui.app /Applications/
+	@echo "$(GREEN)✓ Grid Agent GUI installed successfully to /Applications/grid-agent-gui.app$(NC)"
+else ifeq ($(HOST_OS),Linux)
 	@echo "$(CYAN)Installing grid-agent-gui to $(INSTALL_BIN)...$(NC)"
 	@mkdir -p $(INSTALL_BIN)
 	@cp $(GUI_DIR)/build/bin/grid-agent-gui $(INSTALL_BIN)/grid-agent-gui
-	@chmod +x $(INSTALL_BIN)/grid-agent-gui 2>/dev/null || true
-ifeq ($(HOST_OS),Linux)
+	@chmod +x $(INSTALL_BIN)/grid-agent-gui
 	@echo "$(CYAN)Installing desktop entry...$(NC)"
 	@mkdir -p $(HOME)/.local/share/applications
 	@mkdir -p $(HOME)/.local/share/icons/hicolor/512x512/apps
@@ -129,9 +134,8 @@ Categories=Utility;Development;" > $(HOME)/.local/share/applications/grid-agent.
 	@chmod +x $(HOME)/.local/share/applications/grid-agent.desktop
 	@gtk-update-icon-cache $(HOME)/.local/share/icons/hicolor/ -f 2>/dev/null || true
 	@update-desktop-database $(HOME)/.local/share/applications/ 2>/dev/null || true
-	@echo "$(GREEN)✓ Desktop entry installed$(NC)"
-endif
 	@echo "$(GREEN)✓ Grid Agent GUI installed successfully to $(INSTALL_BIN)/grid-agent-gui$(NC)"
+endif
 
 #########################
 # Test Targets
