@@ -16,6 +16,7 @@ export interface Settings {
     isConfigured: boolean;
     profiles: Profile[];
     activeProfileID: string;
+    enableExportSummary: boolean;
 }
 
 export const themeStore = writable('dark');
@@ -27,7 +28,8 @@ export const settingsStore = writable<Settings>({
     theme: 'dark',
     isConfigured: false,
     profiles: [],
-    activeProfileID: ''
+    activeProfileID: '',
+    enableExportSummary: false
 });
 export const messagesStore = writable([]);
 

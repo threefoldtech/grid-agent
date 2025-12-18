@@ -40,14 +40,15 @@ type App struct {
 
 // Settings holds user configuration
 type Settings struct {
-	Mnemonics       string    `json:"mnemonics"`
-	Network         string    `json:"network"` // mainnet, testnet, devnet
-	GeminiAPIKey    string    `json:"geminiApiKey"`
-	Model           string    `json:"model"`
-	Theme           string    `json:"theme"` // light, dark
-	IsConfigured    bool      `json:"isConfigured"`
-	Profiles        []Profile `json:"profiles"`
-	ActiveProfileID string    `json:"activeProfileID"`
+	Mnemonics           string    `json:"mnemonics"`
+	Network             string    `json:"network"` // mainnet, testnet, devnet
+	GeminiAPIKey        string    `json:"geminiApiKey"`
+	Model               string    `json:"model"`
+	Theme               string    `json:"theme"` // light, dark
+	IsConfigured        bool      `json:"isConfigured"`
+	Profiles            []Profile `json:"profiles"`
+	ActiveProfileID     string    `json:"activeProfileID"`
+	EnableExportSummary bool      `json:"enableExportSummary"` // Generate AI summary on export (uses tokens)
 }
 
 // Profile represents a user personalization profile
@@ -408,7 +409,7 @@ func (a *App) SendMessage(message string, requestID string) (*Message, error) {
 				Steps:     collector.steps,
 			}, nil
 		}
-		return nil, fmt.Errorf("failed to process message: %w", err)
+		return nil, fmt.Errorf("Sorry, something went wrong while processing your message.\n %w", err)
 	}
 
 	return &Message{
@@ -754,14 +755,15 @@ func (a *App) DeleteProfile(id string) (*Settings, error) {
 	return a.settings, nil
 }
 
-// UpdateAdvancedSettings updates the API key and model
-func (a *App) UpdateAdvancedSettings(apiKey, model string) (*Settings, error) {
+// UpdateAdvancedSettings updates the API key, model, and export options
+func (a *App) UpdateAdvancedSettings(apiKey, model string, enableExportSummary bool) (*Settings, error) {
 	if apiKey == "" {
 		return nil, fmt.Errorf("API key cannot be empty")
 	}
 
 	a.settings.GeminiAPIKey = apiKey
 	a.settings.Model = model
+	a.settings.EnableExportSummary = enableExportSummary
 
 	if err := a.saveSettingsToFile(); err != nil {
 		return nil, err

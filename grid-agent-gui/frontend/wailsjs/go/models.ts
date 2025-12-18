@@ -93,6 +93,7 @@ export namespace main {
 	    isConfigured: boolean;
 	    profiles: Profile[];
 	    activeProfileID: string;
+	    enableExportSummary: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -108,6 +109,7 @@ export namespace main {
 	        this.isConfigured = source["isConfigured"];
 	        this.profiles = this.convertValues(source["profiles"], Profile);
 	        this.activeProfileID = source["activeProfileID"];
+	        this.enableExportSummary = source["enableExportSummary"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

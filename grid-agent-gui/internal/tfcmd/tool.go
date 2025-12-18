@@ -63,6 +63,9 @@ func (t *Tool) Description() tools.ToolDescriptor {
 }`,
 		Instructions: fmt.Sprintf(`Execute ThreeFold Grid CLI commands using the provided schema.
 
+TFCMD SCHEMA:
+%s
+
 VALIDATION CHECKLIST:
 - You MUST use alphanumeric only for deployment and project names
 - You MUST provide all required flags (check "required": true in schema)
@@ -72,6 +75,14 @@ VALIDATION CHECKLIST:
 - You MUST use file path for --ssh flag, not key content
 
 CRITICAL FLAG RULES:
+
+VALIDATION RULES:
+- Check that ALL required flags are provided (look for "required": true in the schema)
+- Check that ALL required positional arguments are provided (look for "args" in the schema)
+- Evaluate the 'Mutually Exclusive Flags' and 'Flag Groups' sections for the target subcommand.
+- If any required flags or arguments are missing, ask the user first
+- resources names must contain only letters and numbers
+- Always remember that deploy kubernetes|vm --ssh flag takes the file path not the file content
 
 FLAG GROUPS (must be set together):
 - deploy vm: --flist + --entrypoint (both required if either is used)
@@ -118,7 +129,7 @@ DOMAIN PLANNING PATTERN (breaks circular dependency):
 
 This allows configuring app with domain before gateway exists!
 
-%s`, schemaJSON),
+`, schemaJSON),
 		Examples: []string{
 			`{
   "toolName": "tfcmd",

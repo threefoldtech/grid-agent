@@ -92,6 +92,37 @@ func (e *JSONParseError) Error() string {
 	return fmt.Sprintf("failed to parse JSON response: %v", e.Err)
 }
 
+// friendlyError converts Gemini API errors to user-friendly messages
+func friendlyError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	errStr := err.Error()
+
+	// Quota exceeded (429)
+	if strings.Contains(errStr, "429") || strings.Contains(errStr, "RESOURCE_EXHAUSTED") || strings.Contains(errStr, "quota") {
+		return fmt.Errorf("⏳ API quota exceeded. The free tier has limited requests. Please wait a minute or upgrade your API plan at https://ai.google.dev")
+	}
+
+	// Invalid API key (401/403)
+	if strings.Contains(errStr, "401") || strings.Contains(errStr, "403") || strings.Contains(errStr, "PERMISSION_DENIED") || strings.Contains(errStr, "UNAUTHENTICATED") {
+		return fmt.Errorf("🔑 Invalid or expired API key. Please check your Gemini API key in Settings.")
+	}
+
+	// Network/timeout errors
+	if strings.Contains(errStr, "timeout") || strings.Contains(errStr, "deadline") || strings.Contains(errStr, "context canceled") {
+		return fmt.Errorf("⏱️ Request timed out. Please try again.")
+	}
+
+	if strings.Contains(errStr, "connection") || strings.Contains(errStr, "network") || strings.Contains(errStr, "dial tcp") {
+		return fmt.Errorf("🌐 Network error. Please check your internet connection.")
+	}
+
+	// Return original error if no match
+	return err
+}
+
 // SendMessage sends a message to Gemini
 func (p *GeminiProvider) SendMessage(ctx context.Context, message string) (*Response, error) {
 	if p.chat == nil {
@@ -106,7 +137,7 @@ func (p *GeminiProvider) SendMessage(ctx context.Context, message string) (*Resp
 		// Send message using the new SDK
 		resp, err := p.chat.SendMessage(ctx, genai.Part{Text: currentMessage})
 		if err != nil {
-			return nil, err
+			return nil, friendlyError(err)
 		}
 
 		parsedResp, err := p.parseResponse(resp)
