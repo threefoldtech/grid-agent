@@ -20,6 +20,8 @@ export function GenerateSummary(arg1:string):Promise<string>;
 
 export function GetSettings():Promise<main.Settings>;
 
+export function GetVersion():Promise<string>;
+
 export function Logout():Promise<void>;
 
 export function SaveSettings(arg1:string,arg2:string,arg3:string):Promise<void>;

@@ -112,6 +112,11 @@ func (a *App) GetSettings() *Settings {
 	return a.settings
 }
 
+// GetVersion returns the application version
+func (a *App) GetVersion() string {
+	return Version
+}
+
 // UpdateInfo contains version update information
 type UpdateInfo struct {
 	UpdateAvailable bool   `json:"updateAvailable"`

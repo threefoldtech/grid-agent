@@ -8,6 +8,7 @@
     DeleteProfile,
     UpdateAdvancedSettings,
     UpdateGridSettings,
+    GetVersion,
   } from "../../wailsjs/go/main/App.js";
   import {
     settingsStore,
@@ -35,6 +36,7 @@
   let isEditingApiKey = false;
   let tempApiKey = "";
   let modelDropdownOpen = false;
+  let showApiKey = false;
 
   // Track original values for change detection
   let originalApiKey = "";
@@ -46,6 +48,7 @@
   let isEditingMnemonic = false;
   let tempMnemonic = "";
   let networkDropdownOpen = false;
+  let showMnemonic = false;
 
   // Track original grid values for change detection
   let originalMnemonics = "";
@@ -56,6 +59,9 @@
   let successMsg = "";
   let showDeleteModal = false;
   let profileToDelete: any = null;
+
+  // Version
+  let appVersion = "";
 
   // Track modal visibility for latch
   let prevShow = false;
@@ -93,6 +99,9 @@
         gridNetwork = $settingsStore.network || "main";
         originalMnemonics = gridMnemonics;
         originalNetwork = gridNetwork;
+
+        // Load version
+        GetVersion().then(v => appVersion = v);
       }
     }
     prevShow = show;
@@ -435,6 +444,13 @@
             <span>Docs</span>
           </button>
         </nav>
+
+        <!-- Version Display in Sidebar Footer -->
+        {#if appVersion}
+          <div class="sidebar-footer">
+            <span class="version-badge">{appVersion}</span>
+          </div>
+        {/if}
       </aside>
 
       <!-- Main Content Area -->
@@ -735,13 +751,19 @@
                   <div class="api-key-display">
                     <input
                       type="text"
-                      value={advancedApiKey.length > 8
-                        ? advancedApiKey.slice(0, 4) +
-                          "*".repeat(Math.max(0, advancedApiKey.length - 8)) +
-                          advancedApiKey.slice(-4)
+                      value={showApiKey
+                        ? (advancedApiKey.length > 8
+                          ? advancedApiKey.slice(0, 4) + "****" + advancedApiKey.slice(-4)
+                          : "****")
                         : "*".repeat(advancedApiKey.length)}
                       disabled
                     />
+                    <button
+                      class="btn small outline"
+                      on:click={() => showApiKey = !showApiKey}
+                    >
+                      {showApiKey ? "Hide" : "Show"}
+                    </button>
                     <button
                       class="btn small secondary"
                       on:click={startApiKeyEdit}>Change</button
@@ -865,9 +887,23 @@
                   <div class="api-key-display">
                     <input
                       type="text"
-                      value={formatMnemonic(gridMnemonics)}
+                      value={showMnemonic
+                        ? (() => {
+                            const words = gridMnemonics.split(/\s+/);
+                            if (words.length > 4) {
+                              return words.slice(0, 2).join(" ") + " *** " + words.slice(-2).join(" ");
+                            }
+                            return "*** ***";
+                          })()
+                        : "*".repeat(gridMnemonics.split(/\s+/).length)}
                       disabled
                     />
+                    <button
+                      class="btn small outline"
+                      on:click={() => showMnemonic = !showMnemonic}
+                    >
+                      {showMnemonic ? "Hide" : "Show"}
+                    </button>
                     <button
                       class="btn small secondary"
                       on:click={startMnemonicEdit}>Change</button
@@ -1114,6 +1150,7 @@
             {error}
           </div>
         {/if}
+
       </main>
     </div>
   </div>
@@ -1733,6 +1770,18 @@
     border-color: var(--accent);
   }
 
+  .btn.outline {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+
+  .btn.outline:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--accent);
+    color: var(--text-primary);
+  }
+
   .btn.danger {
     background-color: #7f1d1d;
     color: #fca5a5;
@@ -1963,5 +2012,31 @@
 
   .docs-section a:hover {
     text-decoration: underline;
+  }
+
+  /* Sidebar Footer - Version Display */
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--border);
+    text-align: left;
+  }
+
+  .version-badge {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    display: inline-block;
+  }
+
+  /* Light theme override for version badge */
+  :global([data-theme="light"]) .version-badge {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border);
   }
 </style>
