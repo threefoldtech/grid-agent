@@ -104,11 +104,11 @@ Use --project-name to organize VMs into projects and --network to deploy
 multiple VMs on the same network.
 
 **Disks vs Volumes**:
-- Disks (zmount): Legacy sparse files on host filesystem (slower, being deprecated)
-- Volumes: Modern btrfs subvolumes with quota (faster, future of storage)
+- Disks (zmount): Legacy sparse files on host filesystem (slower, but considered more reliable and stable)
+- Volumes: Modern btrfs subvolumes with quota (faster, future of storage, more experimental)
 
 Key advantages of volumes: better performance, snapshots, live resize, better caching
-Recommendation: Use volumes for all new deployments, disks only for backward compatibility
+Recommendation: Use disks for all new deployments, volumes only if you know explicitly need it
 
 
 Examples:

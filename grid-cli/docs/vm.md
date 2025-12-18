@@ -55,8 +55,8 @@ For cross-farm deployments:
 
 ### Disks vs Volumes
 
-- **Disks (zmount)**: Legacy sparse files on host filesystem (slower, being deprecated)
-- **Volumes**: Modern btrfs subvolumes with quota (faster, future of storage)
+- **Disks (zmount)**: Legacy sparse files on host filesystem (slower, but considered more reliable and stable)
+- **Volumes**: Modern btrfs subvolumes with quota (faster, future of storage, more experimental)
 
 **Key Advantages of Volumes:**
 - ✅ **Better Performance**: Direct subvolume access vs sparse files
@@ -67,15 +67,15 @@ For cross-farm deployments:
 
 **Migration Path:**
 ```
-Past:    zmount (sparse files) ❌ Legacy
-Present: btrfs subvolumes ✅ Current  
-Future:  bcachefs ✅ Next Generation
+Past:    zmount (sparse files) ✅ Stable & Reliable
+Present: btrfs subvolumes ⚠️ Experimental  
+Future:  bcachefs ⏳ Coming Soon
 ```
 
 **Recommendation:**
 
-- Use **volumes** for all new deployments (future-proof)
-- Use **disks** only for backward compatibility (will be deprecated)
+- Use **disks** for all new deployments (more reliable and stable)
+- Use **volumes** only if you explicitly need their advanced features
 
 > **Note**: QSFS is a separate distributed storage technology and is NOT related to volumes. Volumes are local storage.
 
