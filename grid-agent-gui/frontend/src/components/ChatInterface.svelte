@@ -14,6 +14,7 @@
   } from "../stores/stores";
   import ChatMessage from "./ChatMessage.svelte";
   import Settings from "./Settings.svelte";
+  import Docs from "./Docs.svelte";
   import { GenerateSummary, ExportChat } from "../../wailsjs/go/main/App.js";
   import { fade, fly } from "svelte/transition";
   import tfLogo from "../assets/images/tf-logo.png";
@@ -29,6 +30,7 @@
   let showLogoutModal = false;
   let showErrorModal = false;
   let showSettings = false;
+  let showDocs = false;
   let errorMessage = "";
   let isExporting = false;
   let isAborting = false;
@@ -218,6 +220,10 @@
 
   function toggleSettings() {
     showSettings = !showSettings;
+  }
+
+  function toggleDocs() {
+    showDocs = !showDocs;
   }
 
   async function handleExport() {
@@ -533,6 +539,20 @@
           >
         {/if}
       </button>
+      <button class="icon-btn" on:click={toggleDocs} title="Help">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          ><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></svg
+        >
+      </button>
       <button class="icon-btn" on:click={toggleSettings} title="Settings">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -713,6 +733,7 @@
 {/if}
 
 <Settings show={showSettings} on:close={() => (showSettings = false)} />
+<Docs show={showDocs} on:close={() => (showDocs = false)} />
 
 <style>
   .chat-interface {
