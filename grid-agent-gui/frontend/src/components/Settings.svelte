@@ -418,6 +418,13 @@
             <span>Grid Configuration</span>
           </button>
         </nav>
+
+        <!-- Version Display in Sidebar Footer -->
+        {#if appVersion}
+          <div class="sidebar-footer">
+            <span class="version-badge">{appVersion}</span>
+          </div>
+        {/if}
       </aside>
 
       <!-- Main Content Area -->
@@ -892,12 +899,6 @@
           </div>
         {/if}
 
-        <!-- Version Display -->
-        {#if appVersion}
-          <div class="version-display">
-            <span>{appVersion}</span>
-          </div>
-        {/if}
       </main>
     </div>
   </div>
@@ -1667,22 +1668,29 @@
     font-weight: 500;
   }
 
-  /* Version Display */
-  .version-display {
-    position: absolute;
-    bottom: 1rem;
-    left: 1rem;
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-    opacity: 0.7;
-    z-index: 5;
+  /* Sidebar Footer - Version Display */
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--border);
+    text-align: left;
   }
 
-  .version-display span {
-    background: var(--bg-secondary);
-    padding: 0.25rem 0.5rem;
+  .version-badge {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+    padding: 0.35rem 0.75rem;
     border-radius: var(--radius-sm);
     border: 1px solid var(--border);
+    display: inline-block;
+  }
+
+  /* Light theme override for version badge */
+  :global([data-theme="light"]) .version-badge {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border);
   }
 </style>
