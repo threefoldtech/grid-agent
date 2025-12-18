@@ -18,6 +18,10 @@ export function CheckForUpdates() {
   return window['go']['main']['App']['CheckForUpdates']();
 }
 
+export function CheckTfcmdVersion() {
+  return window['go']['main']['App']['CheckTfcmdVersion']();
+}
+
 export function DeactivateProfile() {
   return window['go']['main']['App']['DeactivateProfile']();
 }

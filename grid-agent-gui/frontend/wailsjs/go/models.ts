@@ -149,6 +149,24 @@ export namespace main {
 	        this.releaseURL = source["releaseURL"];
 	    }
 	}
+	export class VersionMismatchInfo {
+	    hasMismatch: boolean;
+	    appVersion: string;
+	    tfcmdVersion: string;
+	    releaseURL: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new VersionMismatchInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hasMismatch = source["hasMismatch"];
+	        this.appVersion = source["appVersion"];
+	        this.tfcmdVersion = source["tfcmdVersion"];
+	        this.releaseURL = source["releaseURL"];
+	    }
+	}
 
 }
 

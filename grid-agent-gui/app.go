@@ -171,6 +171,61 @@ func (a *App) CheckForUpdates() UpdateInfo {
 	return result
 }
 
+// VersionMismatchInfo contains version comparison information
+type VersionMismatchInfo struct {
+	HasMismatch  bool   `json:"hasMismatch"`
+	AppVersion   string `json:"appVersion"`
+	TfcmdVersion string `json:"tfcmdVersion"`
+	ReleaseURL   string `json:"releaseURL"`
+}
+
+// CheckTfcmdVersion checks if the installed tfcmd version matches the app version
+func (a *App) CheckTfcmdVersion() VersionMismatchInfo {
+	result := VersionMismatchInfo{
+		AppVersion: Version,
+		ReleaseURL: "https://github.com/threefoldtech/grid-agent/releases/tag/" + Version,
+	}
+
+	// Find tfcmd using the same function used for command execution
+	tfcmdPath, err := tfcmd.FindTfcmd()
+	if err != nil {
+		log.Printf("Failed to find tfcmd: %v", err)
+		// If tfcmd is not found, we can't check version - treat as mismatch
+		result.HasMismatch = true
+		result.TfcmdVersion = "not found"
+		return result
+	}
+
+	// Run tfcmd version to get the version string
+	cmd := exec.Command(tfcmdPath, "version")
+	output, err := cmd.Output()
+	if err != nil {
+		log.Printf("Failed to get tfcmd version: %v", err)
+		result.HasMismatch = true
+		result.TfcmdVersion = "unknown"
+		return result
+	}
+
+	// Parse the version from the first line of output
+	// tfcmd version outputs: "v0.3.0\n<commit-hash>"
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(lines) == 0 {
+		result.HasMismatch = true
+		result.TfcmdVersion = "unknown"
+		return result
+	}
+
+	tfcmdVersion := strings.TrimSpace(lines[0])
+	result.TfcmdVersion = tfcmdVersion
+
+	// Compare versions - they should match exactly
+	if tfcmdVersion != Version {
+		result.HasMismatch = true
+	}
+
+	return result
+}
+
 // SaveSettings saves settings and initializes services
 func (a *App) SaveSettings(mnemonics, network, apiKey string) error {
 	a.settings.Mnemonics = mnemonics

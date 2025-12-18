@@ -5,6 +5,7 @@
     Logout,
     AbortWorkflow,
     CheckForUpdates,
+    CheckTfcmdVersion,
   } from "../../wailsjs/go/main/App.js";
   import { EventsOn, BrowserOpenURL } from "../../wailsjs/runtime/runtime.js";
   import {
@@ -40,11 +41,27 @@
   let updateInfo: { latestVersion: string; releaseURL: string } | null = null;
   let isOpeningLink = false;
 
+  // Version mismatch notification state
+  let showVersionMismatch = false;
+  let versionMismatchInfo: {
+    appVersion: string;
+    tfcmdVersion: string;
+    releaseURL: string;
+  } | null = null;
+  let isOpeningMismatchLink = false;
+
   function openUpdateLink() {
     if (isOpeningLink || !updateInfo) return;
     isOpeningLink = true;
     BrowserOpenURL(updateInfo.releaseURL);
     setTimeout(() => (isOpeningLink = false), 2000);
+  }
+
+  function openMismatchLink() {
+    if (isOpeningMismatchLink || !versionMismatchInfo) return;
+    isOpeningMismatchLink = true;
+    BrowserOpenURL(versionMismatchInfo.releaseURL);
+    setTimeout(() => (isOpeningMismatchLink = false), 2000);
   }
 
   // Active Persona Logic
@@ -320,6 +337,22 @@
         console.log("Failed to check for updates:", err);
       });
 
+    // Check for tfcmd version mismatch on startup
+    CheckTfcmdVersion()
+      .then((info) => {
+        if (info.hasMismatch) {
+          versionMismatchInfo = {
+            appVersion: info.appVersion,
+            tfcmdVersion: info.tfcmdVersion,
+            releaseURL: info.releaseURL,
+          };
+          showVersionMismatch = true;
+        }
+      })
+      .catch((err) => {
+        console.log("Failed to check tfcmd version:", err);
+      });
+
     // Listen for real-time command output
     EventsOn(
       "command-output",
@@ -499,6 +532,46 @@
               ></path>
               <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path>
               <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path>
+            </svg>
+          {/if}
+        </button>
+      {/if}
+      {#if showVersionMismatch && versionMismatchInfo}
+        <button
+          class="icon-btn version-mismatch-btn"
+          on:click|preventDefault={openMismatchLink}
+          disabled={isOpeningMismatchLink}
+          title="Version Mismatch: App {versionMismatchInfo.appVersion} ≠ tfcmd {versionMismatchInfo.tfcmdVersion}. Click to download matching tfcmd."
+        >
+          {#if isOpeningMismatchLink}
+            <svg
+              class="animate-spin"
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              ><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg
+            >
+          {:else}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+              <path d="M12 9v4"></path>
+              <path d="M12 17h.01"></path>
             </svg>
           {/if}
         </button>
@@ -1187,5 +1260,27 @@
 
   .update-btn {
     animation: flash-accent 2s infinite;
+  }
+
+  /* Version Mismatch Warning Button Animation */
+  @keyframes flash-warning {
+    0%,
+    100% {
+      background: transparent;
+      color: var(--text-secondary);
+    }
+    50% {
+      background: #f59e0b;
+      color: white;
+    }
+  }
+
+  .version-mismatch-btn {
+    animation: flash-warning 2s infinite;
+  }
+
+  .version-mismatch-btn:hover {
+    background: #f59e0b !important;
+    color: white !important;
   }
 </style>
