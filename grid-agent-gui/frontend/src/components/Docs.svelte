@@ -223,7 +223,8 @@
           <ul>
             <li><strong>"Agent not initialized":</strong> Check API key and network settings</li>
             <li><strong>"Command failed":</strong> Verify network connectivity and credentials</li>
-            <li><strong>"No nodes available":</strong> Try different farm or node selection</li>
+            <li><strong>"No nodes available":</strong> Try different farm or adjust resources specs</li>
+            <li><strong>"tfcmd not found":</strong> Grid CLI is missing - make sure to download tfcmd from <a href="https://github.com/threefoldtech/grid-agent/releases" target="_blank" rel="noopener noreferrer">github.com/threefoldtech/grid-agent/releases</a></li>
           </ul>
 
           <h5>Getting Help</h5>
