@@ -625,7 +625,7 @@ func (a *App) initializeAgent(opts AgentInitOptions) error {
 	}
 
 	// Determine model
-	modelName := "gemini-2.5-flash"
+	modelName := "gemini-3-flash-preview"
 	if a.settings.Model != "" {
 		modelName = a.settings.Model
 	}

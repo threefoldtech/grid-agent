@@ -103,14 +103,22 @@ Supports single VM deployment or multi-VM deployments with shared networks.
 Use --project-name to organize VMs into projects and --network to deploy
 multiple VMs on the same network.
 
+**Disks vs Volumes**:
+- Disks (zmount): Legacy sparse files on host filesystem (slower, being deprecated)
+- Volumes: Modern btrfs subvolumes with quota (faster, future of storage)
+
+Key advantages of volumes: better performance, snapshots, live resize, better caching
+Recommendation: Use volumes for all new deployments, disks only for backward compatibility
+
+
 Examples:
   # Deploy single VM with default settings
   tfcmd deploy vm --name myvm --ssh ~/.ssh/id_rsa.pub
   
-  # Deploy VM with custom project name
+  # Deploy VM with custom resources and project name
   tfcmd deploy vm --name webserver --ssh ~/.ssh/id_rsa.pub --cpu 4 --memory 8 --project-name production
   
-  # Deploy multiple VMs on shared network
+  # Deploy multiple VMs on shared network (same farm)
   tfcmd deploy vm --name vm01 --ssh ~/.ssh/id_rsa.pub --project-name myapp
   tfcmd deploy vm --name vm02 --ssh ~/.ssh/id_rsa.pub --network myappnetwork --project-name myapp`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -128,7 +136,7 @@ Examples:
 		}
 		sshKey, err := os.ReadFile(sshFile)
 		if err != nil {
-			log.Fatal().Err(err).Send()
+			return fmt.Errorf("failed to read SSH key file '%s': %w", sshFile, err)
 		}
 		env["SSH_KEY"] = string(sshKey)
 		node, err := cmd.Flags().GetUint32("node")
@@ -182,9 +190,6 @@ Examples:
 		if err != nil {
 			return err
 		}
-		if len(gpus) > 0 && node == 0 {
-			log.Fatal().Msg("must specify node ID when using GPUs")
-		}
 
 		ipv4, err := cmd.Flags().GetBool("ipv4")
 		if err != nil {
@@ -215,7 +220,7 @@ Examples:
 		if mycelium {
 			seed, err = workloads.RandomMyceliumIPSeed()
 			if err != nil {
-				log.Fatal().Err(err).Send()
+				return fmt.Errorf("failed to generate mycelium IP seed: %w", err)
 			}
 		}
 
@@ -227,6 +232,16 @@ Examples:
 		projectName, err := cmd.Flags().GetString("project-name")
 		if err != nil {
 			return err
+		}
+
+		// Validate: --node and --farm are mutually exclusive
+		if node != 0 && farm != 0 {
+			return fmt.Errorf("--node and --farm flags are mutually exclusive")
+		}
+
+		// Validate: --gpus requires --node
+		if len(gpus) > 0 && node == 0 {
+			return fmt.Errorf("--gpus requires --node flag to specify which node has the GPU")
 		}
 
 		// Validate: --network requires --project-name
@@ -241,7 +256,7 @@ Examples:
 
 		cfg, err := config.GetUserConfig()
 		if err != nil {
-			log.Fatal().Err(err).Send()
+			return fmt.Errorf("failed to get user config: %w", err)
 		}
 
 		opts := []deployer.PluginOpt{
@@ -257,7 +272,7 @@ Examples:
 		}
 		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, opts...)
 		if err != nil {
-			log.Fatal().Err(err).Send()
+			return fmt.Errorf("failed to create TFPluginClient: %w", err)
 		}
 
 		// if no public ips or yggdrasil then we should go for the light deployment
@@ -266,7 +281,7 @@ Examples:
 		if node != 0 {
 			isLight, err = isZos4Node(cmd.Context(), t.NcPool, t.SubstrateConn, node)
 			if err != nil {
-				log.Fatal().Err(err).Send()
+				return fmt.Errorf("failed to check if node %d supports light VMs: %w", node, err)
 			}
 		}
 
@@ -323,7 +338,7 @@ func init() {
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
-	deployVMCmd.Flags().String("ssh", "", "path to public ssh key")
+	deployVMCmd.Flags().StringP("ssh", "s", "", "path to public SSH key file (e.g., ~/.ssh/id_rsa.pub)")
 	// should it be required?
 	err = deployVMCmd.MarkFlagRequired("ssh")
 	if err != nil {
@@ -331,13 +346,13 @@ func init() {
 	}
 
 	deployVMCmd.Flags().Uint32("node", 0, "node id vm should be deployed on")
-	deployVMCmd.Flags().Uint64("farm", 1, "farm id vm should be deployed on")
+	deployVMCmd.Flags().Uint64("farm", 0, "farm ID for deployment (0 = any farm, or specify farm ID)")
 	deployVMCmd.MarkFlagsMutuallyExclusive("node", "farm")
 	deployVMCmd.Flags().String("network", "", "name of existing network to deploy VM on. If not specified, a new network will be created default to '{vmname}network'")
 	deployVMCmd.Flags().String("project-name", "", "project name for the VM deployment. Defaults to 'vm/{vmname}' if not specified. Required when using --network")
 
 	deployVMCmd.Flags().Uint8("cpu", 1, "number of cpu units")
-	deployVMCmd.Flags().Uint64("memory", 1, "memory size in gb")
+	deployVMCmd.Flags().Uint64("memory", 1, "memory size in GB (e.g., --memory 2 for 2GB RAM)")
 	deployVMCmd.Flags().Uint64("rootfs", 2, "root filesystem size in gb")
 	deployVMCmd.Flags().StringSlice("disk", []string{}, "disk specification in format 'size:mountpoint' (e.g., '10:/data'). Can be specified multiple times. For backward compatibility, just 'size' defaults to '/data'")
 	deployVMCmd.Flags().String("flist", ubuntuFlist, "flist for vm")
@@ -350,7 +365,7 @@ func init() {
 
 	deployVMCmd.Flags().Bool("ipv4", false, "assign public ipv4 for vm")
 	deployVMCmd.Flags().Bool("ipv6", false, "assign public ipv6 for vm")
-	deployVMCmd.Flags().Bool("ygg", false, "assign yggdrasil ip for vm")
+	deployVMCmd.Flags().Bool("ygg", true, "assign planetary network IP (Yggdrasil) for VM")
 	deployVMCmd.Flags().Bool("mycelium", true, "assign mycelium ip for vm")
 	deployVMCmd.Flags().StringToStringP("env", "e", make(map[string]string), "environment variables for the vm")
 }

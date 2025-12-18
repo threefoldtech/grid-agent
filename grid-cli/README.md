@@ -23,7 +23,68 @@ For examples and description of tfcmd commands check out:
 - [gateway-name](docs/gateway-name.md)
 - [kubernetes](docs/kubernetes.md)
 - [ZDB](docs/zdb.md)
-- [chat](docs/chat.md)
+- [cancel](docs/cancel.md)
+- [get](docs/get.md)
+- [list](docs/list.md)
+- [login](docs/login.md)
+- [update](docs/update.md)
+- [version](docs/version.md)
+- [contracts](docs/contracts.md)
+
+## Quick Examples
+
+```bash
+# Login to ThreeFold Grid
+tfcmd login
+
+# Deploy a VM
+tfcmd deploy vm --name myvm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4
+
+# Get VM information
+tfcmd get vm myvm --project-name vm/myvm
+
+# List available gateways
+tfcmd list gateways name
+
+# Deploy a gateway name
+tfcmd deploy gateway name --name myapp --node 11 --backends http://10.20.2.2:8080
+
+# Cancel deployment
+tfcmd cancel --project-name vm/myvm
+```
+
+## Command Reference
+
+```bash
+tfcmd
+├── deploy
+│   ├── vm              # Deploy virtual machines
+│   ├── gateway
+│   │   ├── name        # Deploy name gateway (subdomain)
+│   │   └── fqdn        # Deploy FQDN gateway
+│   ├── kubernetes      # Deploy Kubernetes clusters
+│   └── zdb             # Deploy Zero-DB instances
+├── get
+│   ├── vm              # Get VM information
+│   ├── gateway
+│   │   ├── name        # Get name gateway info
+│   │   └── fqdn        # Get FQDN gateway info
+│   ├── kubernetes      # Get Kubernetes cluster info
+│   ├── zdb             # Get ZDB instance info
+│   ├── contract        # Get specific contract info
+│   └── contracts       # List all contracts
+├── list
+│   └── gateways
+│       ├── name        # List name gateways
+│       └── fqdn        # List FQDN gateways
+├── cancel
+│   └── contracts       # Cancel contracts
+├── update
+│   └── kubernetes      # Update Kubernetes workers
+├── login               # Authenticate with mnemonics
+├── version             # Show version information
+└── completion          # Generate shell completions
+```
 
 ## Download
 

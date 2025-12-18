@@ -13,7 +13,7 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		SystemPrompt:     "You are a helpful AI assistant. You can use tools to help the user.",
-		ModelName:        "gemini-2.5-flash",
+		ModelName:        "gemini-3-flash-preview",
 		ResponseMIMEType: "application/json",
 		MaxRetries:       3,
 		MaxJSONRetries:   2,

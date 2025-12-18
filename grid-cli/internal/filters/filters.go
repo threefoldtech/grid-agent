@@ -43,13 +43,29 @@ func BuildVMFilter(disk workloads.Disk, volume workloads.Volume, farmID, memoryM
 	}
 
 	rootfss := []uint64{*convertGBToBytes(rootfsMB / 1024)}
-	return buildGenericFilter(&freeMRUs, &freeSRUs, nil, &freeIPs, []uint64{farmID}, nil, light), ssd, rootfss
+
+	// Handle farmID: 0 means any farm (empty slice), non-zero means specific farm
+	var farmFilter []uint64
+	if farmID != 0 {
+		farmFilter = []uint64{farmID}
+	} else {
+		farmFilter = []uint64{}
+	}
+
+	return buildGenericFilter(&freeMRUs, &freeSRUs, nil, &freeIPs, farmFilter, nil, light), ssd, rootfss
 }
 
 // BuildGatewayFilter build a filter for a gateway
 func BuildGatewayFilter(farmID uint64) types.NodeFilter {
+	var farmFilter []uint64
+	if farmID != 0 {
+		farmFilter = []uint64{farmID}
+	} else {
+		farmFilter = []uint64{}
+	}
+
 	domain := true
-	return buildGenericFilter(nil, nil, nil, nil, []uint64{farmID}, &domain, false)
+	return buildGenericFilter(nil, nil, nil, nil, farmFilter, &domain, false)
 }
 
 // BuildZDBFilter build a filter for a zdbs

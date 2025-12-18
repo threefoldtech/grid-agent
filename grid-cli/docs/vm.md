@@ -36,9 +36,48 @@ tfcmd deploy vm [flags]
 ### Project Names and Networks
 
 When deploying a VM:
+
 - If `--project-name` is not specified, it defaults to `vm/{vmname}`
 - The network name is derived from the project name (e.g., project `vm/myapp` creates network `myappnetwork`)
 - Multiple VMs can share the same project and network by using the same `--project-name` and `--network`
+
+### Network Limitations
+
+**IMPORTANT**: Networks can only span nodes within the same farm.
+
+- ✅ Nodes 11 and 14 (both in Farm 1) can share a network
+- ❌ Node 327 (Farm 2) cannot join Farm 1's network
+
+For cross-farm deployments:
+
+- Use separate networks per farm
+- Use planetary network IPs for inter-VM communication
+
+### Disks vs Volumes
+
+- **Disks (zmount)**: Legacy sparse files on host filesystem (slower, being deprecated)
+- **Volumes**: Modern btrfs subvolumes with quota (faster, future of storage)
+
+**Key Advantages of Volumes:**
+- ✅ **Better Performance**: Direct subvolume access vs sparse files
+- ✅ **Snapshots**: Backups without interrupting the VM
+- ✅ **Live Resize**: Grow/shrink while VM is running
+- ✅ **Better Caching**: Optimized storage utilization
+- ✅ **Future-Proof**: Will migrate to bcachefs
+
+**Migration Path:**
+```
+Past:    zmount (sparse files) ❌ Legacy
+Present: btrfs subvolumes ✅ Current  
+Future:  bcachefs ✅ Next Generation
+```
+
+**Recommendation:**
+
+- Use **volumes** for all new deployments (future-proof)
+- Use **disks** only for backward compatibility (will be deprecated)
+
+> **Note**: QSFS is a separate distributed storage technology and is NOT related to volumes. Volumes are local storage.
 
 Example:
 
