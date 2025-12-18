@@ -713,7 +713,11 @@
                   <div class="api-key-display">
                     <input
                       type="text"
-                      value={showApiKey ? advancedApiKey : "*".repeat(advancedApiKey.length)}
+                      value={showApiKey
+                        ? (advancedApiKey.length > 8
+                          ? advancedApiKey.slice(0, 4) + "****" + advancedApiKey.slice(-4)
+                          : "****")
+                        : "*".repeat(advancedApiKey.length)}
                       disabled
                     />
                     <button
@@ -845,7 +849,15 @@
                   <div class="api-key-display">
                     <input
                       type="text"
-                      value={showMnemonic ? gridMnemonics : "*".repeat(gridMnemonics.split(/\s+/).length)}
+                      value={showMnemonic
+                        ? (() => {
+                            const words = gridMnemonics.split(/\s+/);
+                            if (words.length > 4) {
+                              return words.slice(0, 2).join(" ") + " *** " + words.slice(-2).join(" ");
+                            }
+                            return "*** ***";
+                          })()
+                        : "*".repeat(gridMnemonics.split(/\s+/).length)}
                       disabled
                     />
                     <button
