@@ -8,6 +8,7 @@
     DeleteProfile,
     UpdateAdvancedSettings,
     UpdateGridSettings,
+    GetVersion,
   } from "../../wailsjs/go/main/App.js";
   import {
     settingsStore,
@@ -57,6 +58,9 @@
   let showDeleteModal = false;
   let profileToDelete: any = null;
 
+  // Version
+  let appVersion = "";
+
   // Track modal visibility for latch
   let prevShow = false;
 
@@ -93,6 +97,9 @@
         gridNetwork = $settingsStore.network || "main";
         originalMnemonics = gridMnemonics;
         originalNetwork = gridNetwork;
+
+        // Load version
+        GetVersion().then(v => appVersion = v);
       }
     }
     prevShow = show;
@@ -884,6 +891,13 @@
             {error}
           </div>
         {/if}
+
+        <!-- Version Display -->
+        {#if appVersion}
+          <div class="version-display">
+            <span>{appVersion}</span>
+          </div>
+        {/if}
       </main>
     </div>
   </div>
@@ -1651,5 +1665,24 @@
     font-size: 0.9rem;
     color: var(--text-primary);
     font-weight: 500;
+  }
+
+  /* Version Display */
+  .version-display {
+    position: absolute;
+    bottom: 1rem;
+    left: 1rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    opacity: 0.7;
+    z-index: 5;
+  }
+
+  .version-display span {
+    background: var(--bg-secondary);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
   }
 </style>
