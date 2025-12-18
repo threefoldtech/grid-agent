@@ -80,10 +80,12 @@
       resetState();
       if ($settingsStore) {
         advancedApiKey = $settingsStore.geminiApiKey || "";
-        advancedModel = $settingsStore.model || "gemini-2.5-flash";
+        advancedModel = $settingsStore.model || "gemini-3-flash-preview";
+        enableExportSummary = $settingsStore.enableExportSummary || false;
         // Store original values
         originalApiKey = advancedApiKey;
         originalModel = advancedModel;
+        originalEnableExportSummary = enableExportSummary;
 
         // Load grid settings
         gridMnemonics = $settingsStore.mnemonics || "";
@@ -96,8 +98,13 @@
   }
 
   // Detect if config has changed
+  let enableExportSummary = false;
+  let originalEnableExportSummary = false;
+
   $: configHasChanged =
-    (advancedApiKey !== originalApiKey || advancedModel !== originalModel) &&
+    (advancedApiKey !== originalApiKey ||
+      advancedModel !== originalModel ||
+      enableExportSummary !== originalEnableExportSummary) &&
     advancedApiKey.trim() !== "";
 
   // Detect if grid config has changed
@@ -244,11 +251,13 @@
       const newSettings = await UpdateAdvancedSettings(
         advancedApiKey,
         advancedModel,
+        enableExportSummary,
       );
       settingsStore.set(newSettings);
       // Update original values after successful save
       originalApiKey = advancedApiKey;
       originalModel = advancedModel;
+      originalEnableExportSummary = enableExportSummary;
       error = "";
     } catch (e: any) {
       error = e.message || String(e);
@@ -717,6 +726,22 @@
                 <p class="helper-text">
                   Your API key is stored securely on your local device.
                 </p>
+              </div>
+
+              <div class="input-group">
+                <label for="export-summary">Export Options</label>
+                <div class="toggle-option">
+                  <label class="toggle-label">
+                    <input type="checkbox" bind:checked={enableExportSummary} />
+                    <span class="toggle-text"
+                      >Generate AI Summary on Export</span
+                    >
+                  </label>
+                  <p class="helper-text">
+                    When enabled, uses tokens to generate a summary when
+                    exporting conversations. Off by default to save tokens.
+                  </p>
+                </div>
               </div>
 
               <div class="form-actions">
@@ -1563,5 +1588,67 @@
 
   .section-content::-webkit-scrollbar-thumb:hover {
     background: var(--text-secondary);
+  }
+
+  /* Toggle Switch Styles */
+  .toggle-option {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .toggle-label input[type="checkbox"] {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--bg-tertiary);
+    border-radius: 24px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+  }
+
+  .toggle-label input[type="checkbox"]::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 2px;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    background: var(--text-secondary);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+  }
+
+  .toggle-label input[type="checkbox"]:checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .toggle-label input[type="checkbox"]:checked::before {
+    left: 22px;
+    background: white;
+  }
+
+  .toggle-label input[type="checkbox"]:hover {
+    border-color: var(--accent);
+  }
+
+  .toggle-text {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    font-weight: 500;
   }
 </style>

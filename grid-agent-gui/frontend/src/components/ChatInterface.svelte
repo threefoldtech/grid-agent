@@ -225,13 +225,18 @@
     isExporting = true;
 
     try {
-      // Format chat history for summary generation
-      const historyText = $messagesStore
-        .map((msg) => `${msg.role.toUpperCase()}: ${msg.content}`)
-        .join("\n\n");
+      // Check if summary generation is enabled
+      const shouldGenerateSummary =
+        $settingsStore?.enableExportSummary === true;
 
-      // Generate summary
-      const summary = await GenerateSummary(historyText);
+      let summary = "";
+      if (shouldGenerateSummary) {
+        // Format chat history for summary generation
+        const historyText = $messagesStore
+          .map((msg) => `${msg.role.toUpperCase()}: ${msg.content}`)
+          .join("\n\n");
+        summary = await GenerateSummary(historyText);
+      }
 
       // Format full export content
       const date = new Date().toLocaleString();
@@ -240,7 +245,9 @@
       let exportContent = `# Grid Agent Conversation\n\n`;
       exportContent += `**Date:** ${date}\n`;
       exportContent += `**Network:** ${network}\n\n`;
-      exportContent += `## Summary\n${summary}\n\n`;
+      if (summary) {
+        exportContent += `## Summary\n${summary}\n\n`;
+      }
       exportContent += `## Full Conversation\n\n`;
 
       $messagesStore.forEach((msg) => {

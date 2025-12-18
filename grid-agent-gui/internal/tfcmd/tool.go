@@ -66,6 +66,9 @@ func (t *Tool) Description() tools.ToolDescriptor {
 - Query and cancel contracts
 - All tfcmd commands are available
 
+TFCMD SCHEMA:
+%s
+
 VALIDATION RULES:
 - Check that ALL required flags are provided (look for "required": true in the schema)
 - Check that ALL required positional arguments are provided (look for "args" in the schema)
@@ -103,7 +106,7 @@ OTHER RELEVANT INFORMATION:
 - Don't Ask user for his twin ID, instead look it up as it it usually can be seen in the output of tfcmd, such "get" or "contracts", etc.
 - Always use --disable-sentry with any deploy commands unless user specified otherwise
 
-%s`, schemaJSON),
+`, schemaJSON),
 		Examples: []string{
 			`{
   "toolName": "tfcmd",
