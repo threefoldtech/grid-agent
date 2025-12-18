@@ -25,21 +25,18 @@ To avoid name collisions, you can follow this convention to creates unique subdo
 
 IMPORTANT: Gateway must be able to reach your backend. Choose ONE option:
 
-- SAME NETWORK: Deploy gateway and VM on same network
+- SAME NETWORK: Deploy gateway and VM on same WireGuard network (private IPs)
    tfcmd deploy vm --name webapp --project-name myapp --ssh ~/.ssh/id_rsa.pub
-   tfcmd deploy gateway name --name api --node 11 --backends http://10.20.2.2:8080 --network myappnetwork --project-name myapp
+   tfcmd deploy gateway name --name api --project-name myapp --node 11 --backends http://10.20.2.2:8080 --network myappnetwork
+   Note: Even if on same physical node, they still need to be on same WireGuard network
 
-- SAME NODE: Deploy gateway and VM on same node
-   tfcmd deploy vm --name webapp --node 11 --ssh ~/.ssh/id_rsa.pub
-   tfcmd deploy gateway name --name api --node 11 --backends http://10.20.2.2:8080
-
-- PUBLIC IP: Use VM's public IP, planetary or mycelium IP as backend
+- PUBLIC IPs: Use VM's public IPv4, planetary, or mycelium IP as backend
    tfcmd deploy vm --name webapp --ipv4 --ssh ~/.ssh/id_rsa.pub
-   tfcmd deploy gateway name --name api --node 11 --backends http://<VM-PUBLIC-IP>:8080
+   tfcmd deploy gateway name --name api --project-name mygateway --node 11 --backends http://<VM-PUBLIC-IP:PORT>
 
 Examples:
   # Option 1: Same network (recommended for multi-VM)
-  tfcmd deploy gateway name --name myapp --node 11 --backends http://10.20.2.2:8080 --network myappnetwork --project-name myapp`,
+  tfcmd deploy gateway name --name myapp --project-name myapp --node 11 --backends http://10.20.2.2:8080 --network myappnetwork`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, tls, zosBackends, node, network, projectName, err := parseCommonGatewayFlags(cmd)
 		if err != nil {

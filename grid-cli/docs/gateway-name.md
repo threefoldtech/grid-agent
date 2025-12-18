@@ -27,61 +27,63 @@ The `--network` flag is optional but important for gateway-backend connectivity:
 
 **IMPORTANT: Gateway must be able to reach your backend. Choose ONE option:**
 
-#### 1️⃣ SAME NETWORK (Recommended for multi-VM)
-Deploy gateway and VM on the same network using private IPs:
+#### 1️⃣ SAME NETWORK (Recommended - uses private WireGuard IPs)
+Deploy gateway and VM on the same WireGuard network using private IPs:
 
 ```bash
 # Deploy VM first
 tfcmd deploy vm --name webapp --project-name myapp --ssh ~/.ssh/id_rsa.pub
 
-# Deploy gateway on same network
-tfcmd deploy gateway name --name api --node 11 \
+# Deploy gateway on same network (can be same or different node within same farm)
+tfcmd deploy gateway name --name api \
+  --project-name myapp \
+  --node 11 \
   --backends http://10.20.2.2:8080 \
-  --network myappnetwork \
-  --project-name myapp
+  --network myappnetwork
 ```
 
-#### 2️⃣ SAME NODE (Simplest option)
-Deploy gateway and VM on the same node:
+> **Note**: Even if gateway and VM are on the same physical node, they still need to be on the same WireGuard network to communicate via private IPs (10.x.x.x).
+
+#### 2️⃣ PUBLIC IPv4 (Cross-farm deployment)
+Use VM's public IPv4 address as backend:
 
 ```bash
-# Deploy VM on specific node
-tfcmd deploy vm --name webapp --node 11 --ssh ~/.ssh/id_rsa.pub
-
-# Deploy gateway on same node
-tfcmd deploy gateway name --name api --node 11 \
-  --backends http://10.20.2.2:8080
-```
-
-#### 3️⃣ PUBLIC IP (Cross-farm deployment)
-Use VM's public IP as backend:
-
-```bash
-# Deploy VM with public IP
+# Deploy VM with public IPv4
 tfcmd deploy vm --name webapp --ipv4 --ssh ~/.ssh/id_rsa.pub
+# Note the public IPv4 from deployment output
 
-# Deploy gateway using VM's public IP
-tfcmd deploy gateway name --name api --node 11 \
+# Deploy gateway using VM's public IPv4
+tfcmd deploy gateway name --name api \
+  --project-name mygateway \
+  --node 11 \
   --backends http://203.0.113.1:8080
 ```
 
-#### 4️⃣ PLANETARY/MYCELIUM IP (Cross-network)
-Use planetary or mycelium IP as backend:
+#### 3️⃣ PLANETARY/MYCELIUM IP (Cross-network, no IPv4 needed)
+Use planetary (Yggdrasil) or mycelium IP as backend:
 
 ```bash
-# Deploy VM (get planetary IP from get vm output)
+# Deploy VM (planetary and mycelium IPs are assigned by default)
 tfcmd deploy vm --name webapp --ssh ~/.ssh/id_rsa.pub
-tfcmd get vm webapp --project-name vm/webapp  # Note planetary IP
+tfcmd get vm webapp --project-name vm/webapp  # Note planetary or mycelium IP
 
 # Deploy gateway using planetary IP
-tfcmd deploy gateway name --name api --node 11 \
-  --backends http://302:9e63:7d43:b742:c2e0:ab69:e101:8032:8080
+tfcmd deploy gateway name --name api \
+  --project-name mygateway \
+  --node 11 \
+  --backends http://[302:9e63:7d43:b742:c2e0:ab69:e101:8032]:8080
+
+# Or using mycelium IP
+tfcmd deploy gateway name --name api \
+  --project-name mygateway \
+  --node 11 \
+  --backends http://[544:b74f:ceef:cc7e:ff0f:6b18:921f:8031]:8080
 ```
 
 **Network Flag Requirements:**
-- **Required** when backend uses private IP (10.x.x.x from same network)
-- **Optional** when backend uses public, planetary, or mycelium IP
-- **Must match** the VM's project name when using `--network`
+- **Required** when backend uses private WireGuard IP (10.x.x.x from same network)
+- **Not needed** when backend uses public IPv4, planetary, or mycelium IP
+- **Must match** the VM's network name when using `--network` (e.g., if VM is on `myappnetwork`, gateway must use `--network myappnetwork`)
 
 Example:
 

@@ -47,7 +47,7 @@ tfcmd get vm myvm --project-name vm/myvm
 tfcmd list gateways name
 
 # Deploy a gateway name
-tfcmd deploy gateway name --name myapp --node 11 --backends http://10.20.2.2:8080
+tfcmd deploy gateway name --name myapp --project-name vm/myvm --network myvmnetwork --node 11 --backends http://10.20.2.2:8080
 
 # Cancel deployment
 tfcmd cancel --project-name vm/myvm
