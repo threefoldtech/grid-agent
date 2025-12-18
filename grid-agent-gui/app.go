@@ -408,7 +408,7 @@ func (a *App) SendMessage(message string, requestID string) (*Message, error) {
 				Steps:     collector.steps,
 			}, nil
 		}
-		return nil, fmt.Errorf("failed to process message: %w", err)
+		return nil, fmt.Errorf("Sorry, something went wrong while processing your message.\n %w", err)
 	}
 
 	return &Message{

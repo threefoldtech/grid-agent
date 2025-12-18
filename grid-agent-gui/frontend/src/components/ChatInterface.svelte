@@ -155,7 +155,7 @@
             output: "",
             error: String(error),
           });
-          msgs[index] = { ...existingMsg, content: "Error: " + error, steps };
+          msgs[index] = { ...existingMsg, content: error, steps };
         }
         return [...msgs];
       });
