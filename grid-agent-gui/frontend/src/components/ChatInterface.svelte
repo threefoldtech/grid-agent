@@ -35,6 +35,7 @@
   let errorMessage = "";
   let isExporting = false;
   let isAborting = false;
+  let showClearModal = false;
 
   // Update notification state
   let showUpdateBanner = false;
@@ -233,6 +234,21 @@
   function closeErrorModal() {
     showErrorModal = false;
     errorMessage = "";
+  }
+
+  function handleClear() {
+    showClearModal = true;
+  }
+
+  function clearConversation() {
+    showClearModal = false;
+    messagesStore.set([]);
+  }
+
+  async function saveAndClear() {
+    showClearModal = false;
+    await handleExport();
+    messagesStore.set([]);
   }
 
   function toggleSettings() {
@@ -612,6 +628,25 @@
           >
         {/if}
       </button>
+      <button
+        class="icon-btn clear-btn"
+        on:click={handleClear}
+        title="Clear Conversation"
+        disabled={$messagesStore.length === 0}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          ><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M10 11v6" /><path d="M14 11v6" /></svg
+        >
+      </button>
       <button class="icon-btn" on:click={toggleDocs} title="Help">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -805,6 +840,21 @@
   </div>
 {/if}
 
+<!-- Clear Modal -->
+{#if showClearModal}
+  <div class="modal-overlay" on:click={() => showClearModal = false} transition:fade>
+    <div class="modal" on:click|stopPropagation transition:fade>
+      <h2>Clear Conversation</h2>
+      <p>If you clear the window context you will not be able to retrieve the conversation.</p>
+      <div class="modal-actions">
+        <button class="btn primary" on:click={saveAndClear}>Save and Clear</button>
+        <button class="btn danger" on:click={clearConversation}>Clear</button>
+        <button class="btn secondary" on:click={() => showClearModal = false}>Cancel</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
 <Settings show={showSettings} on:close={() => (showSettings = false)} />
 <Docs show={showDocs} on:close={() => (showDocs = false)} />
 
@@ -966,6 +1016,15 @@
   }
 
   .logout-btn:hover {
+    color: var(--error);
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  .clear-btn {
+    color: var(--text-secondary);
+  }
+
+  .clear-btn:hover {
     color: var(--error);
     background: rgba(239, 68, 68, 0.1);
   }
