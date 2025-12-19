@@ -261,17 +261,13 @@
       return newMsgs;
     });
 
-    // If this is the last user message, retrigger AI response
+    // If this user message has an agent response immediately following, retrigger AI
     const messages = $messagesStore;
-    if (index === messages.length - 1 && messages[index].role === "user") {
-      // Remove only the immediate next agent message if it exists (the response to this message)
+    const nextIndex = index + 1;
+    if (messages[index].role === "user" && nextIndex < messages.length && messages[nextIndex].role === "agent") {
+      // Remove the agent response
       messagesStore.update((msgs) => {
-        const nextIndex = index + 1;
-        if (nextIndex < msgs.length && msgs[nextIndex].role === "agent") {
-          // Remove just this agent response
-          return msgs.filter((_, i) => i !== nextIndex);
-        }
-        return msgs;
+        return msgs.filter((_, i) => i !== nextIndex);
       });
 
       // Trigger new AI response by simulating user input
