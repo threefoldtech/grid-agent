@@ -45,6 +45,10 @@
   let originalApiKey = "";
   let originalModel = "";
 
+  // Store API keys separately to prevent cross-contamination
+  let storedGeminiKey = "";
+  let storedOpenrouterKey = "";
+
   // Grid Settings
   let gridMnemonics = "";
   let gridNetwork = "";
@@ -104,8 +108,12 @@
     if (show && settingsStore) {
       resetState();
       if ($settingsStore) {
+        // Load stored API keys
+        storedGeminiKey = $settingsStore.geminiApiKey || "";
+        storedOpenrouterKey = $settingsStore.openrouterApiKey || "";
+
         advancedProvider = $settingsStore.provider || "gemini";
-        advancedApiKey = ($settingsStore.provider === "openrouter" ? $settingsStore.openrouterApiKey : $settingsStore.geminiApiKey) || "";
+        advancedApiKey = ($settingsStore.provider === "openrouter" ? storedOpenrouterKey : storedGeminiKey) || "";
         advancedModel = $settingsStore.model || "gemini-3-flash-preview";
         enableExportSummary = $settingsStore.enableExportSummary || false;
         // Store original values
@@ -125,6 +133,13 @@
       }
     }
     prevShow = show;
+  }
+
+  // Update API key when provider changes
+  $: if (advancedProvider !== originalProvider) {
+    // When provider changes, update the API key field to reflect the stored key for the new provider
+    // or clear it if no key is stored for the new provider
+    advancedApiKey = (advancedProvider === "openrouter" ? storedOpenrouterKey : storedGeminiKey) || "";
   }
 
   // Detect if config has changed
