@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 
 	"github.com/sashabaranov/go-openai"
@@ -24,7 +25,7 @@ func NewOpenrouterProvider(apiKey string, modelName string) (*OpenrouterProvider
 		Provider:         "openrouter",
 		ModelName:        modelName,
 		ResponseMIMEType: "application/json",
-		SystemPrompt:     "You are a helpful AI assistant.",
+		SystemPrompt:     getOpenrouterSystemPrompt(),
 		MaxRetries:       3,
 		MaxJSONRetries:   2,
 	}
@@ -34,6 +35,24 @@ func NewOpenrouterProvider(apiKey string, modelName string) (*OpenrouterProvider
 	}
 
 	return NewOpenrouterProviderWithConfig(apiKey, config)
+}
+
+// getOpenrouterSystemPrompt returns an optimized system prompt for OpenRouter models
+func getOpenrouterSystemPrompt() string {
+	return `You are a helpful AI assistant with access to various tools and functions.
+
+CRITICAL: You MUST respond with valid JSON only. No markdown, no explanations, no extra text.
+
+When you need to use a tool, respond with:
+{"toolName": "tool_name", "arguments": {...}, "explanation": "why"}
+
+For answers, respond with:
+{"answer": "your response here", "explanation": "context"}
+
+For questions, respond with:
+{"question": "what you need to know"}
+
+Multiple responses can be in an array, but keep it simple and valid JSON.`
 }
 
 // NewOpenrouterProviderWithConfig creates a new Openrouter provider with custom config
@@ -181,24 +200,170 @@ func (p *OpenrouterProvider) Close() error {
 	return nil
 }
 
-// parseResponse converts Openrouter response to generic Response
+// parseResponse converts Openrouter response to generic Response with enhanced flexibility
 func (p *OpenrouterProvider) parseResponse(text string) (*Response, error) {
-	// Try to parse JSON using the defined struct
+	// Clean the text first
+	text = strings.TrimSpace(text)
+
+	// Try multiple parsing strategies for better robustness
+	genericResp, err := p.tryParseStrategies(text)
+	if err != nil {
+		return nil, err
+	}
+
+	return genericResp, nil
+}
+
+// tryParseStrategies attempts multiple JSON parsing approaches
+func (p *OpenrouterProvider) tryParseStrategies(text string) (*Response, error) {
+	// Strategy 1: Standard array/object parsing (original approach)
+	if resp, err := p.parseStandard(text); err == nil {
+		return resp, nil
+	}
+
+	// Strategy 2: Extract JSON from markdown code blocks
+	if resp, err := p.parseFromMarkdown(text); err == nil {
+		return resp, nil
+	}
+
+	// Strategy 3: Flexible key-based parsing (look for tool/action patterns)
+	if resp, err := p.parseFlexible(text); err == nil {
+		return resp, nil
+	}
+
+	// Strategy 4: Try to extract any valid JSON object/array from the text
+	if resp, err := p.parseExtractedJSON(text); err == nil {
+		return resp, nil
+	}
+
+	// All strategies failed
+	return nil, &JSONParseError{
+		OriginalText: text,
+		Err: fmt.Errorf("all parsing strategies failed"),
+	}
+}
+
+// parseStandard - original parsing approach
+func (p *OpenrouterProvider) parseStandard(text string) (*Response, error) {
 	var outerResponses []LLMOuterResponse
 	if err := json.Unmarshal([]byte(text), &outerResponses); err != nil {
 		// Try single object
 		var single LLMOuterResponse
 		if err2 := json.Unmarshal([]byte(text), &single); err2 != nil {
-			// Return special error to trigger retry loop in SendMessage
-			return nil, &JSONParseError{
-				OriginalText: text,
-				Err:          err2,
-			}
+			return nil, err2
 		}
 		outerResponses = []LLMOuterResponse{single}
 	}
 
-	// Handle all responses in the list for multiple tool calls
+	return p.processLLMResponses(outerResponses), nil
+}
+
+// parseFromMarkdown - extract JSON from markdown code blocks
+func (p *OpenrouterProvider) parseFromMarkdown(text string) (*Response, error) {
+	// Look for JSON in markdown code blocks
+	jsonRegex := regexp.MustCompile("```(?:json)?\\s*(\\{[\\s\\S]*?\\}|\\[[\\s\\S]*?\\])\\s*```")
+	matches := jsonRegex.FindStringSubmatch(text)
+	if len(matches) > 1 {
+		return p.parseStandard(matches[1])
+	}
+
+	// Also try without language specifier
+	jsonRegex2 := regexp.MustCompile("```\\s*(\\{[\\s\\S]*?\\}|\\[[\\s\\S]*?\\])\\s*```")
+	matches2 := jsonRegex2.FindStringSubmatch(text)
+	if len(matches2) > 1 {
+		return p.parseStandard(matches2[1])
+	}
+
+	return nil, fmt.Errorf("no JSON found in markdown")
+}
+
+// parseFlexible - look for tool/action patterns in various formats
+func (p *OpenrouterProvider) parseFlexible(text string) (*Response, error) {
+	resp := &Response{}
+
+	// Look for tool call patterns
+	toolPatterns := []string{
+		`"toolName"\s*:\s*"([^"]+)"`,
+		`"tool"\s*:\s*"([^"]+)"`,
+		`"action"\s*:\s*"([^"]+)"`,
+		`"function"\s*:\s*"([^"]+)"`,
+	}
+
+	for _, pattern := range toolPatterns {
+		re := regexp.MustCompile(pattern)
+		matches := re.FindStringSubmatch(text)
+		if len(matches) > 1 && p.registeredTools[matches[1]] {
+			// Found a valid tool call
+			resp.ToolCalls = append(resp.ToolCalls, ToolCall{
+				ToolName:    matches[1],
+				Arguments:   make(map[string]interface{}),
+				Explanation: "Tool call detected",
+			})
+			break
+		}
+	}
+
+	// Look for answer patterns
+	answerPatterns := []string{
+		`"answer"\s*:\s*"([^"]*(?:\\.[^"]*)*)"`,
+		`"response"\s*:\s*"([^"]*(?:\\.[^"]*)*)"`,
+		`"result"\s*:\s*"([^"]*(?:\\.[^"]*)*)"`,
+	}
+
+	for _, pattern := range answerPatterns {
+		re := regexp.MustCompile(pattern)
+		matches := re.FindStringSubmatch(text)
+		if len(matches) > 1 {
+			resp.Text = matches[1]
+			break
+		}
+	}
+
+	// Look for question patterns
+	questionPatterns := []string{
+		`"question"\s*:\s*"([^"]*(?:\\.[^"]*)*)"`,
+	}
+
+	for _, pattern := range questionPatterns {
+		re := regexp.MustCompile(pattern)
+		matches := re.FindStringSubmatch(text)
+		if len(matches) > 1 {
+			resp.Question = matches[1]
+			break
+		}
+	}
+
+	// If we found any structured content, return it
+	if len(resp.ToolCalls) > 0 || resp.Text != "" || resp.Question != "" {
+		return resp, nil
+	}
+
+	return nil, fmt.Errorf("no structured content found")
+}
+
+// parseExtractedJSON - try to find and parse any valid JSON in the text
+func (p *OpenrouterProvider) parseExtractedJSON(text string) (*Response, error) {
+	// Try to find JSON objects or arrays in the text
+	jsonPatterns := []string{
+		`\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}`, // Simple objects (may not handle nested)
+		`\[[\s\S]*?\]`,                     // Arrays
+	}
+
+	for _, pattern := range jsonPatterns {
+		re := regexp.MustCompile(pattern)
+		matches := re.FindAllString(text, -1)
+		for _, match := range matches {
+			if resp, err := p.parseStandard(match); err == nil {
+				return resp, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("no valid JSON found")
+}
+
+// processLLMResponses - common processing logic for LLMOuterResponse arrays
+func (p *OpenrouterProvider) processLLMResponses(outerResponses []LLMOuterResponse) *Response {
 	genericResp := &Response{}
 	var finalAnswer strings.Builder
 
@@ -231,7 +396,7 @@ func (p *OpenrouterProvider) parseResponse(text string) (*Response, error) {
 	}
 
 	genericResp.Text = strings.TrimSpace(finalAnswer.String())
-	return genericResp, nil
+	return genericResp
 }
 
 // friendlyError converts Openrouter API errors to user-friendly messages
