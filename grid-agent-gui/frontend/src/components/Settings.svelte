@@ -31,14 +31,17 @@
   let formInstructions = "";
 
   // Advanced Settings
+  let advancedProvider = "gemini";
   let advancedModel = "";
   let advancedApiKey = "";
   let isEditingApiKey = false;
   let tempApiKey = "";
+  let providerDropdownOpen = false;
   let modelDropdownOpen = false;
   let showApiKey = false;
 
   // Track original values for change detection
+  let originalProvider = "gemini";
   let originalApiKey = "";
   let originalModel = "";
 
@@ -66,13 +69,28 @@
   // Track modal visibility for latch
   let prevShow = false;
 
-  const availableModels = [
-    "gemini-3-pro-preview",
-    "gemini-3-flash-preview",
-    "gemini-2.5-pro",
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
-    "gemini-robotics-er-1.5-preview",
+  const availableModels = {
+    gemini: [
+      "gemini-3-pro-preview",
+      "gemini-3-flash-preview",
+      "gemini-2.5-pro",
+      "gemini-2.5-flash",
+      "gemini-2.5-flash-lite",
+      "gemini-robotics-er-1.5-preview",
+    ],
+    openrouter: [
+      "anthropic/claude-3.5-sonnet",
+      "openai/gpt-4o",
+      "openai/gpt-4o-mini",
+      "meta-llama/llama-3.1-405b-instruct",
+      "google/gemini-pro-1.5",
+      "deepseek/deepseek-r1-0528:free",
+    ],
+  };
+
+  const availableProviders = [
+    { id: "gemini", name: "Google Gemini" },
+    { id: "openrouter", name: "OpenRouter" },
   ];
 
   // --- Reactivity ---
@@ -86,10 +104,12 @@
     if (show && settingsStore) {
       resetState();
       if ($settingsStore) {
-        advancedApiKey = $settingsStore.geminiApiKey || "";
+        advancedProvider = $settingsStore.provider || "gemini";
+        advancedApiKey = ($settingsStore.provider === "openrouter" ? $settingsStore.openrouterApiKey : $settingsStore.geminiApiKey) || "";
         advancedModel = $settingsStore.model || "gemini-3-flash-preview";
         enableExportSummary = $settingsStore.enableExportSummary || false;
         // Store original values
+        originalProvider = advancedProvider;
         originalApiKey = advancedApiKey;
         originalModel = advancedModel;
         originalEnableExportSummary = enableExportSummary;
@@ -112,7 +132,8 @@
   let originalEnableExportSummary = false;
 
   $: configHasChanged =
-    (advancedApiKey !== originalApiKey ||
+    (advancedProvider !== originalProvider ||
+      advancedApiKey !== originalApiKey ||
       advancedModel !== originalModel ||
       enableExportSummary !== originalEnableExportSummary) &&
     advancedApiKey.trim() !== "";
@@ -131,6 +152,7 @@
   function resetState() {
     activeSection = "personas";
     error = "";
+    providerDropdownOpen = false;
     modelDropdownOpen = false;
     networkDropdownOpen = false;
     cancelApiKeyEdit();
@@ -140,23 +162,22 @@
   function switchSection(section: string) {
     activeSection = section;
     error = "";
+    providerDropdownOpen = false;
     modelDropdownOpen = false;
     cancelEdit();
   }
 
   // Close dropdown when clicking outside
   function handleDropdownClickOutside(event: MouseEvent) {
-    if (modelDropdownOpen) {
-      const target = event.target as HTMLElement;
-      if (!target.closest(".custom-select")) {
-        modelDropdownOpen = false;
-      }
+    const target = event.target as HTMLElement;
+    if (providerDropdownOpen && !target.closest(".custom-select")) {
+      providerDropdownOpen = false;
     }
-    if (networkDropdownOpen) {
-      const target = event.target as HTMLElement;
-      if (!target.closest(".custom-select")) {
-        networkDropdownOpen = false;
-      }
+    if (modelDropdownOpen && !target.closest(".custom-select") && !target.closest(".model-input-container")) {
+      modelDropdownOpen = false;
+    }
+    if (networkDropdownOpen && !target.closest(".custom-select")) {
+      networkDropdownOpen = false;
     }
   }
 
@@ -259,12 +280,14 @@
     }
     try {
       const newSettings = await UpdateAdvancedSettings(
+        advancedProvider,
         advancedApiKey,
         advancedModel,
         enableExportSummary,
       );
       settingsStore.set(newSettings);
       // Update original values after successful save
+      originalProvider = advancedProvider;
       originalApiKey = advancedApiKey;
       originalModel = advancedModel;
       originalEnableExportSummary = enableExportSummary;
@@ -658,14 +681,14 @@
 
             <div class="config-form">
               <div class="input-group">
-                <label for="adv-model">AI Model</label>
-                <div class="custom-select" class:open={modelDropdownOpen}>
+                <label for="adv-provider">AI Provider</label>
+                <div class="custom-select" class:open={providerDropdownOpen}>
                   <button
                     type="button"
                     class="select-trigger"
-                    on:click={() => (modelDropdownOpen = !modelDropdownOpen)}
+                    on:click={() => (providerDropdownOpen = !providerDropdownOpen)}
                   >
-                    <span>{advancedModel || "Select a model"}</span>
+                    <span>{availableProviders.find(p => p.id === advancedProvider)?.name || "Select a provider"}</span>
                     <svg
                       width="12"
                       height="12"
@@ -674,27 +697,31 @@
                       stroke="currentColor"
                       stroke-width="2"
                       class="select-arrow"
-                      class:rotated={modelDropdownOpen}
+                      class:rotated={providerDropdownOpen}
                     >
                       <path d="M2 4l4 4 4-4" />
                     </svg>
                   </button>
-                  {#if modelDropdownOpen}
+                  {#if providerDropdownOpen}
                     <div
                       class="select-dropdown"
                       transition:slide={{ duration: 200 }}
                     >
-                      {#each availableModels as m}
+                      {#each availableProviders as p}
                         <button
                           type="button"
                           class="select-option"
-                          class:selected={advancedModel === m}
+                          class:selected={advancedProvider === p.id}
                           on:click={() => {
-                            advancedModel = m;
-                            modelDropdownOpen = false;
+                            advancedProvider = p.id;
+                            // Reset model if it's not available for the new provider
+                            if (!availableModels[advancedProvider].includes(advancedModel)) {
+                              advancedModel = availableModels[advancedProvider][0] || "";
+                            }
+                            providerDropdownOpen = false;
                           }}
                         >
-                          {m}
+                          {p.name}
                         </button>
                       {/each}
                     </div>
@@ -703,7 +730,109 @@
               </div>
 
               <div class="input-group">
-                <label for="adv-key">Gemini API Key</label>
+                <label for="adv-model">AI Model</label>
+                {#if advancedProvider === "gemini"}
+                  <!-- Dropdown for Gemini -->
+                  <div class="custom-select" class:open={modelDropdownOpen}>
+                    <button
+                      type="button"
+                      class="select-trigger"
+                      on:click={() => (modelDropdownOpen = !modelDropdownOpen)}
+                    >
+                      <span>{advancedModel || "Select a model"}</span>
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 12 12"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        class="select-arrow"
+                        class:rotated={modelDropdownOpen}
+                      >
+                        <path d="M2 4l4 4 4-4" />
+                      </svg>
+                    </button>
+                    {#if modelDropdownOpen}
+                      <div
+                        class="select-dropdown"
+                        transition:slide={{ duration: 200 }}
+                      >
+                        {#each availableModels[advancedProvider] || [] as m}
+                          <button
+                            type="button"
+                            class="select-option"
+                            class:selected={advancedModel === m}
+                            on:click={() => {
+                              advancedModel = m;
+                              modelDropdownOpen = false;
+                            }}
+                          >
+                            {m}
+                          </button>
+                        {/each}
+                      </div>
+                    {/if}
+                  </div>
+                {:else if advancedProvider === "openrouter"}
+                  <!-- Text input for OpenRouter with suggestions -->
+                  <div class="model-input-container">
+                    <input
+                      id="adv-model"
+                      type="text"
+                      bind:value={advancedModel}
+                      placeholder="e.g. anthropic/claude-3.5-sonnet or deepseek/deepseek-r1-0528:free"
+                      autocomplete="off"
+                    />
+                    <div class="model-suggestions" class:open={modelDropdownOpen}>
+                      <button
+                        type="button"
+                        class="suggestions-toggle"
+                        on:click={() => (modelDropdownOpen = !modelDropdownOpen)}
+                      >
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 12 12"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          class="suggestions-arrow"
+                          class:rotated={modelDropdownOpen}
+                        >
+                          <path d="M2 4l4 4 4-4" />
+                        </svg>
+                        Suggestions
+                      </button>
+                      {#if modelDropdownOpen}
+                        <div
+                          class="suggestions-dropdown"
+                          transition:slide={{ duration: 200 }}
+                        >
+                          {#each availableModels[advancedProvider] || [] as m}
+                            <button
+                              type="button"
+                              class="suggestion-option"
+                              on:click={() => {
+                                advancedModel = m;
+                                modelDropdownOpen = false;
+                              }}
+                            >
+                              {m}
+                            </button>
+                          {/each}
+                        </div>
+                      {/if}
+                    </div>
+                  </div>
+                  <p class="helper-text">
+                    Choose from suggestions or enter any OpenRouter model name manually (e.g., deepseek/deepseek-r1-0528:free)
+                  </p>
+                {/if}
+              </div>
+
+              <div class="input-group">
+                <label for="adv-key">{availableProviders.find(p => p.id === advancedProvider)?.name || "Provider"} API Key</label>
                 {#if isEditingApiKey}
                   <div class="api-key-edit">
                     <input
@@ -1638,6 +1767,93 @@
 
   .section-content::-webkit-scrollbar-thumb:hover {
     background: var(--text-secondary);
+  }
+
+  /* Model Input Container for OpenRouter */
+  .model-input-container {
+    position: relative;
+  }
+
+  .model-input-container input {
+    padding-right: 120px; /* Space for suggestions button */
+  }
+
+  .model-suggestions {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 10;
+  }
+
+  .suggestions-toggle {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    transition: all 0.2s;
+  }
+
+  .suggestions-toggle:hover {
+    background: var(--bg-secondary);
+    border-color: var(--accent);
+    color: var(--text-primary);
+  }
+
+  .suggestions-arrow {
+    transition: transform 0.2s;
+    color: var(--text-secondary);
+  }
+
+  .model-suggestions.open .suggestions-arrow.rotated {
+    transform: rotate(180deg);
+  }
+
+  .suggestions-dropdown {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    min-width: 300px;
+  }
+
+  .suggestion-option {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    padding: 0.75rem 1rem;
+    font-family: inherit;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .suggestion-option:hover {
+    background: var(--bg-tertiary);
+  }
+
+  .suggestion-option:first-child {
+    border-top-left-radius: var(--radius-md);
+    border-top-right-radius: var(--radius-md);
+  }
+
+  .suggestion-option:last-child {
+    border-bottom-left-radius: var(--radius-md);
+    border-bottom-right-radius: var(--radius-md);
   }
 
   /* Toggle Switch Styles */

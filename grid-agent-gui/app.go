@@ -42,7 +42,9 @@ type App struct {
 type Settings struct {
 	Mnemonics           string    `json:"mnemonics"`
 	Network             string    `json:"network"` // mainnet, testnet, devnet
+	Provider            string    `json:"provider"` // "gemini", "openrouter", etc.
 	GeminiAPIKey        string    `json:"geminiApiKey"`
+	OpenrouterAPIKey    string    `json:"openrouterApiKey"`
 	Model               string    `json:"model"`
 	Theme               string    `json:"theme"` // light, dark
 	IsConfigured        bool      `json:"isConfigured"`
@@ -692,6 +694,7 @@ func (a *App) initializeAgent(opts AgentInitOptions) error {
 
 	// Create LLM provider with dynamic tool documentation
 	providerConfig := llm.Config{
+		Provider:         a.settings.Provider,
 		ModelName:        modelName,
 		ResponseMIMEType: "application/json",
 		SystemPrompt:     strings.Replace(internalConfig.GetSystemPrompt(a.settings.Network, a.getActiveInstructions()), "{{TOOL_DESCRIPTIONS}}", toolDocs, 1),
@@ -701,7 +704,18 @@ func (a *App) initializeAgent(opts AgentInitOptions) error {
 		History:          history,   // Pass previous history
 	}
 
-	provider, err := llm.NewGeminiProviderWithConfig(a.settings.GeminiAPIKey, providerConfig)
+	var provider llm.Provider
+	var err error
+
+	switch a.settings.Provider {
+	case "openrouter":
+		provider, err = llm.NewOpenrouterProviderWithConfig(a.settings.OpenrouterAPIKey, providerConfig)
+	case "gemini":
+		fallthrough
+	default:
+		provider, err = llm.NewGeminiProviderWithConfig(a.settings.GeminiAPIKey, providerConfig)
+	}
+
 	if err != nil {
 		return err
 	}
@@ -815,13 +829,18 @@ func (a *App) DeleteProfile(id string) (*Settings, error) {
 	return a.settings, nil
 }
 
-// UpdateAdvancedSettings updates the API key, model, and export options
-func (a *App) UpdateAdvancedSettings(apiKey, model string, enableExportSummary bool) (*Settings, error) {
+// UpdateAdvancedSettings updates the provider, API keys, model, and export options
+func (a *App) UpdateAdvancedSettings(provider, apiKey, model string, enableExportSummary bool) (*Settings, error) {
 	if apiKey == "" {
 		return nil, fmt.Errorf("API key cannot be empty")
 	}
 
-	a.settings.GeminiAPIKey = apiKey
+	a.settings.Provider = provider
+	if provider == "gemini" {
+		a.settings.GeminiAPIKey = apiKey
+	} else if provider == "openrouter" {
+		a.settings.OpenrouterAPIKey = apiKey
+	}
 	a.settings.Model = model
 	a.settings.EnableExportSummary = enableExportSummary
 
