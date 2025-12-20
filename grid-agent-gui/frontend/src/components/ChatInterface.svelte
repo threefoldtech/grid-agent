@@ -252,11 +252,11 @@
   }
 
   function editMessage(index: number, newContent: string) {
-    // First update the message content
+    // First update the message content and timestamp
     messagesStore.update((msgs) => {
       const newMsgs = [...msgs];
       if (newMsgs[index] && newMsgs[index].role === "user") {
-        newMsgs[index] = { ...newMsgs[index], content: newContent };
+        newMsgs[index] = { ...newMsgs[index], content: newContent, timestamp: new Date().toISOString() };
       }
       return newMsgs;
     });
