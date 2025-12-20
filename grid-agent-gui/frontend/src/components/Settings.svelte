@@ -115,10 +115,11 @@
   let originalEnableExportSummary = false;
 
   $: configHasChanged =
-    (advancedApiKey !== originalApiKey ||
+    (advancedProvider !== originalProvider ||
+      advancedApiKey !== originalApiKey ||
       advancedModel !== originalModel ||
       enableExportSummary !== originalEnableExportSummary) &&
-    advancedApiKey.trim() !== "";
+    (advancedProvider === "ollama" || advancedApiKey.trim() !== "");
 
   // Detect if grid config has changed
   $: gridConfigHasChanged =
@@ -263,18 +264,20 @@
   }
 
   async function saveAdvanced() {
-    if (!advancedApiKey.trim()) {
-      error = "API Key is required";
+    if (advancedProvider === "gemini" && !advancedApiKey.trim()) {
+      error = "Gemini API Key is required";
       return;
     }
     try {
       const newSettings = await UpdateAdvancedSettings(
-        advancedApiKey,
+        advancedProvider,
+        advancedProvider === "gemini" ? advancedApiKey : "http://localhost:11434",
         advancedModel,
         enableExportSummary,
       );
       settingsStore.set(newSettings);
       // Update original values after successful save
+      originalProvider = advancedProvider;
       originalApiKey = advancedApiKey;
       originalModel = advancedModel;
       originalEnableExportSummary = enableExportSummary;
@@ -779,54 +782,56 @@
                 </div>
               </div>
 
-              <div class="input-group">
-                <label for="adv-key">Gemini API Key</label>
-                {#if isEditingApiKey}
-                  <div class="api-key-edit">
-                    <input
-                      id="adv-key"
-                      type="text"
-                      bind:value={tempApiKey}
-                      placeholder="Paste API Key here"
-                    />
-                    <div class="edit-actions">
+              {#if advancedProvider === "gemini"}
+                <div class="input-group">
+                  <label for="adv-key">Gemini API Key</label>
+                  {#if isEditingApiKey}
+                    <div class="api-key-edit">
+                      <input
+                        id="adv-key"
+                        type="text"
+                        bind:value={tempApiKey}
+                        placeholder="Paste API Key here"
+                      />
+                      <div class="edit-actions">
+                        <button
+                          class="btn small primary"
+                          on:click={saveApiKeyEdit}>OK</button
+                        >
+                        <button
+                          class="btn small secondary"
+                          on:click={cancelApiKeyEdit}>Cancel</button
+                        >
+                      </div>
+                    </div>
+                  {:else}
+                    <div class="api-key-display">
+                      <input
+                        type="text"
+                        value={showApiKey
+                          ? (advancedApiKey.length > 8
+                            ? advancedApiKey.slice(0, 4) + "****" + advancedApiKey.slice(-4)
+                            : "****")
+                          : "*".repeat(advancedApiKey.length)}
+                        disabled
+                      />
                       <button
-                        class="btn small primary"
-                        on:click={saveApiKeyEdit}>OK</button
+                        class="btn small outline"
+                        on:click={() => showApiKey = !showApiKey}
                       >
+                        {showApiKey ? "Hide" : "Show"}
+                      </button>
                       <button
                         class="btn small secondary"
-                        on:click={cancelApiKeyEdit}>Cancel</button
+                        on:click={startApiKeyEdit}>Change</button
                       >
                     </div>
-                  </div>
-                {:else}
-                  <div class="api-key-display">
-                    <input
-                      type="text"
-                      value={showApiKey
-                        ? (advancedApiKey.length > 8
-                          ? advancedApiKey.slice(0, 4) + "****" + advancedApiKey.slice(-4)
-                          : "****")
-                        : "*".repeat(advancedApiKey.length)}
-                      disabled
-                    />
-                    <button
-                      class="btn small outline"
-                      on:click={() => showApiKey = !showApiKey}
-                    >
-                      {showApiKey ? "Hide" : "Show"}
-                    </button>
-                    <button
-                      class="btn small secondary"
-                      on:click={startApiKeyEdit}>Change</button
-                    >
-                  </div>
-                {/if}
-                <p class="helper-text">
-                  Your API key is stored securely on your local device.
-                </p>
-              </div>
+                  {/if}
+                  <p class="helper-text">
+                    Your API key is stored securely on your local device.
+                  </p>
+                </div>
+              {/if}
 
               <div class="input-group">
                 <label for="export-summary">Export Options</label>
