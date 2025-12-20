@@ -31,14 +31,17 @@
   let formInstructions = "";
 
   // Advanced Settings
+  let advancedProvider = "gemini";
   let advancedModel = "";
   let advancedApiKey = "";
   let isEditingApiKey = false;
   let tempApiKey = "";
+  let providerDropdownOpen = false;
   let modelDropdownOpen = false;
   let showApiKey = false;
 
   // Track original values for change detection
+  let originalProvider = "gemini";
   let originalApiKey = "";
   let originalModel = "";
 
@@ -131,6 +134,7 @@
   function resetState() {
     activeSection = "personas";
     error = "";
+    providerDropdownOpen = false;
     modelDropdownOpen = false;
     networkDropdownOpen = false;
     cancelApiKeyEdit();
@@ -146,6 +150,12 @@
 
   // Close dropdown when clicking outside
   function handleDropdownClickOutside(event: MouseEvent) {
+    if (providerDropdownOpen) {
+      const target = event.target as HTMLElement;
+      if (!target.closest(".custom-select")) {
+        providerDropdownOpen = false;
+      }
+    }
     if (modelDropdownOpen) {
       const target = event.target as HTMLElement;
       if (!target.closest(".custom-select")) {
@@ -658,6 +668,64 @@
 
             <div class="config-form">
               <div class="input-group">
+                <label for="adv-provider">AI Provider</label>
+                <div class="custom-select" class:open={providerDropdownOpen}>
+                  <button
+                    type="button"
+                    class="select-trigger"
+                    on:click={() => (providerDropdownOpen = !providerDropdownOpen)}
+                  >
+                    <span>{advancedProvider === "gemini" ? "Google Gemini" : "Ollama (Local)"}</span>
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 12 12"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      class="select-arrow"
+                      class:rotated={providerDropdownOpen}
+                    >
+                      <path d="M2 4l4 4 4-4" />
+                    </svg>
+                  </button>
+                  {#if providerDropdownOpen}
+                    <div
+                      class="select-dropdown"
+                      transition:slide={{ duration: 200 }}
+                    >
+                      <button
+                        type="button"
+                        class="select-option"
+                        class:selected={advancedProvider === "gemini"}
+                        on:click={() => {
+                          advancedProvider = "gemini";
+                          // Reset to Gemini models
+                          advancedModel = "gemini-3-flash-preview";
+                          providerDropdownOpen = false;
+                        }}
+                      >
+                        Google Gemini
+                      </button>
+                      <button
+                        type="button"
+                        class="select-option"
+                        class:selected={advancedProvider === "ollama"}
+                        on:click={() => {
+                          advancedProvider = "ollama";
+                          // Reset to Ollama models
+                          advancedModel = "llama3.1:8b";
+                          providerDropdownOpen = false;
+                        }}
+                      >
+                        Ollama (Local)
+                      </button>
+                    </div>
+                  {/if}
+                </div>
+              </div>
+
+              <div class="input-group">
                 <label for="adv-model">AI Model</label>
                 <div class="custom-select" class:open={modelDropdownOpen}>
                   <button
@@ -684,7 +752,16 @@
                       class="select-dropdown"
                       transition:slide={{ duration: 200 }}
                     >
-                      {#each availableModels as m}
+                      {#each advancedProvider === "gemini" ? availableModels : [
+                        "llama3.1:8b",
+                        "llama3.1:70b",
+                        "llama3.1:405b",
+                        "qwen2.5:7b",
+                        "qwen2.5:14b",
+                        "qwen2.5:32b",
+                        "qwen2.5:72b",
+                        "mistral:7b"
+                      ] as m}
                         <button
                           type="button"
                           class="select-option"
