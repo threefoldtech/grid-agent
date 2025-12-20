@@ -270,16 +270,65 @@
         return msgs.filter((_, i) => i !== nextIndex);
       });
 
-      // Trigger new AI response by simulating user input
-      setTimeout(() => {
-        // Temporarily set input to trigger handleSubmit
-        const originalInput = input;
-        input = newContent;
-        handleSubmit().finally(() => {
-          // Restore original input if needed
-          input = originalInput;
-        });
-      }, 100);
+      // Add placeholder for new response
+      const requestID = `req_${Date.now()}_${Math.random()}`;
+      const placeholderMsg = {
+        role: "agent",
+        content: "",
+        timestamp: new Date().toISOString(),
+        requestID: requestID,
+        steps: [
+          {
+            progressText: "🤔 Processing your request...",
+            exportPrefix: "",
+            content: "Processing your request...",
+            output: "",
+            error: "",
+          },
+        ],
+      };
+      messagesStore.update((msgs) => [...msgs, placeholderMsg]);
+
+      // Send the edited message directly
+      (async () => {
+        isSending = true;
+        currentRequestID = requestID;
+        try {
+          const response = await SendMessage(newContent, requestID);
+          messagesStore.update((msgs) => {
+            const idx = msgs.findIndex((m) => m.requestID === response.requestID);
+            if (idx !== -1) {
+              const newMsgs = [...msgs];
+              newMsgs[idx] = response;
+              return newMsgs;
+            }
+            return [...msgs, response]; // Fallback
+          });
+        } catch (error) {
+          console.error("Failed to send message:", error);
+          messagesStore.update((msgs) => {
+            const idx = msgs.findIndex((m) => m.requestID === requestID);
+            if (idx !== -1) {
+              const existingMsg = msgs[idx];
+              const steps = (existingMsg.steps || []).filter(
+                (s) => !s.progressText?.includes("🤔 Processing"),
+              );
+              steps.push({
+                progressText: "❌ Error",
+                exportPrefix: "",
+                content: "",
+                output: "",
+                error: String(error),
+              });
+              msgs[idx] = { ...existingMsg, content: error, steps };
+            }
+            return [...msgs];
+          });
+        } finally {
+          isSending = false;
+          currentRequestID = "";
+        }
+      })();
     }
   }
 
