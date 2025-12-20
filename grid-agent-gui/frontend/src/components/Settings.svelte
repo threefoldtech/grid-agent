@@ -173,7 +173,7 @@
     if (providerDropdownOpen && !target.closest(".custom-select")) {
       providerDropdownOpen = false;
     }
-    if (modelDropdownOpen && !target.closest(".custom-select") && !target.closest(".model-input-container")) {
+    if (modelDropdownOpen && !target.closest(".custom-select") && !target.closest(".custom-model-input")) {
       modelDropdownOpen = false;
     }
     if (networkDropdownOpen && !target.closest(".custom-select")) {
@@ -775,21 +775,15 @@
                     {/if}
                   </div>
                 {:else if advancedProvider === "openrouter"}
-                  <!-- Text input for OpenRouter with suggestions -->
-                  <div class="model-input-container">
-                    <input
-                      id="adv-model"
-                      type="text"
-                      bind:value={advancedModel}
-                      placeholder="e.g. anthropic/claude-3.5-sonnet or deepseek/deepseek-r1-0528:free"
-                      autocomplete="off"
-                    />
-                    <div class="model-suggestions" class:open={modelDropdownOpen}>
+                  <!-- Dropdown for OpenRouter with Custom option -->
+                  {#if advancedModel !== "custom"}
+                    <div class="custom-select" class:open={modelDropdownOpen}>
                       <button
                         type="button"
-                        class="suggestions-toggle"
+                        class="select-trigger"
                         on:click={() => (modelDropdownOpen = !modelDropdownOpen)}
                       >
+                        <span>{advancedModel || "Select a model"}</span>
                         <svg
                           width="12"
                           height="12"
@@ -797,22 +791,22 @@
                           fill="none"
                           stroke="currentColor"
                           stroke-width="2"
-                          class="suggestions-arrow"
+                          class="select-arrow"
                           class:rotated={modelDropdownOpen}
                         >
                           <path d="M2 4l4 4 4-4" />
                         </svg>
-                        Suggestions
                       </button>
                       {#if modelDropdownOpen}
                         <div
-                          class="suggestions-dropdown"
+                          class="select-dropdown"
                           transition:slide={{ duration: 200 }}
                         >
                           {#each availableModels[advancedProvider] || [] as m}
                             <button
                               type="button"
-                              class="suggestion-option"
+                              class="select-option"
+                              class:selected={advancedModel === m}
                               on:click={() => {
                                 advancedModel = m;
                                 modelDropdownOpen = false;
@@ -821,13 +815,74 @@
                               {m}
                             </button>
                           {/each}
+                          <div class="dropdown-separator"></div>
+                          <button
+                            type="button"
+                            class="select-option custom-option"
+                            on:click={() => {
+                              advancedModel = "custom";
+                              modelDropdownOpen = false;
+                            }}
+                          >
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            >
+                              <path d="M12 5v14M5 12h14"></path>
+                            </svg>
+                            Custom Model
+                          </button>
                         </div>
                       {/if}
                     </div>
-                  </div>
-                  <p class="helper-text">
-                    Choose from suggestions or enter any OpenRouter model name manually (e.g., deepseek/deepseek-r1-0528:free)
-                  </p>
+                  {:else}
+                    <!-- Custom model input -->
+                    <div class="custom-model-input">
+                      <input
+                        id="adv-model"
+                        type="text"
+                        bind:value={advancedModel}
+                        placeholder="Enter custom OpenRouter model name"
+                        autocomplete="off"
+                        on:input={() => {
+                          // Keep "custom" as a special value, don't override with user input
+                          if (advancedModel === "custom") {
+                            advancedModel = "";
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        class="btn small outline back-to-dropdown"
+                        on:click={() => {
+                          advancedModel = availableModels.openrouter[0] || "";
+                        }}
+                      >
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <path d="M19 12H5M12 19l-7-7 7-7"></path>
+                        </svg>
+                        Back to List
+                      </button>
+                    </div>
+                    <p class="helper-text">
+                      Enter any OpenRouter model name (e.g., deepseek/deepseek-r1-0528:free)
+                    </p>
+                  {/if}
                 {/if}
               </div>
 
@@ -1769,91 +1824,44 @@
     background: var(--text-secondary);
   }
 
-  /* Model Input Container for OpenRouter */
-  .model-input-container {
-    position: relative;
+
+
+  /* Dropdown Separator */
+  .dropdown-separator {
+    height: 1px;
+    background: var(--border);
+    margin: 0.5rem 0;
   }
 
-  .model-input-container input {
-    padding-right: 120px; /* Space for suggestions button */
+  /* Custom Option Styling */
+  .custom-option {
+    color: var(--accent) !important;
+    font-weight: 600;
   }
 
-  .model-suggestions {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    z-index: 10;
+  .custom-option:hover {
+    background: var(--accent);
+    color: white !important;
   }
 
-  .suggestions-toggle {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    color: var(--text-secondary);
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
+  .custom-option svg {
+    margin-right: 0.5rem;
+  }
+
+  /* Custom Model Input */
+  .custom-model-input {
     display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    transition: all 0.2s;
+    gap: 0.75rem;
+    align-items: flex-start;
   }
 
-  .suggestions-toggle:hover {
-    background: var(--bg-secondary);
-    border-color: var(--accent);
-    color: var(--text-primary);
+  .custom-model-input input {
+    flex: 1;
   }
 
-  .suggestions-arrow {
-    transition: transform 0.2s;
-    color: var(--text-secondary);
-  }
-
-  .model-suggestions.open .suggestions-arrow.rotated {
-    transform: rotate(180deg);
-  }
-
-  .suggestions-dropdown {
-    position: absolute;
-    top: calc(100% + 0.5rem);
-    right: 0;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-    max-height: 300px;
-    overflow-y: auto;
-    z-index: 1000;
-    min-width: 300px;
-  }
-
-  .suggestion-option {
-    width: 100%;
-    background: transparent;
-    border: none;
-    color: var(--text-primary);
-    padding: 0.75rem 1rem;
-    font-family: inherit;
-    font-size: 0.9rem;
-    text-align: left;
-    cursor: pointer;
-    transition: background 0.15s;
-  }
-
-  .suggestion-option:hover {
-    background: var(--bg-tertiary);
-  }
-
-  .suggestion-option:first-child {
-    border-top-left-radius: var(--radius-md);
-    border-top-right-radius: var(--radius-md);
-  }
-
-  .suggestion-option:last-child {
-    border-bottom-left-radius: var(--radius-md);
-    border-bottom-right-radius: var(--radius-md);
+  .back-to-dropdown {
+    flex-shrink: 0;
+    white-space: nowrap;
   }
 
   /* Toggle Switch Styles */
