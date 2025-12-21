@@ -191,6 +191,15 @@
             <li>Version information and active persona</li>
             <li>Optional AI-generated summary (if enabled)</li>
           </ul>
+
+          <h5>Clearing Conversations</h5>
+          <p>The clear button (🗑️) allows you to reset the current conversation. Before clearing, you'll be prompted with options:</p>
+          <ul>
+            <li><strong>Save and Clear:</strong> Export the current conversation first, then clear it</li>
+            <li><strong>Clear:</strong> Immediately clear the conversation without saving</li>
+            <li><strong>Cancel:</strong> Keep the current conversation</li>
+          </ul>
+          <p><strong>Note:</strong> Cleared conversations cannot be recovered, so consider saving important discussions first.</p>
         </div>
 
         <!-- Grid Operations -->
