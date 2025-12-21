@@ -107,7 +107,7 @@
           <h5>Example Persona</h5>
           <div class="code-example">
             <p><strong>Name:</strong> TurboNerd</p>
-            <p><strong>Instructions:</strong> When I ask to deploy a dev environment, create a VM with 4GB RAM, 2 CPUs, IPv4 access, and add my SSH key from ~/.ssh/id_rsa.pub. At the start of conversations, check my last 24h billing and warn me if it exceeds $20.</p>
+            <p><strong>Instructions:</strong> When I ask to deploy a dev environment, create a VM with 4GB RAM, 2 CPUs, IPv4 access, and add my SSH key from ~/.ssh/id_rsa.pub. At the start of conversations, check my twin's last 24h consumption and warn me if it exceeds $20.</p>
           </div>
         </div>
 

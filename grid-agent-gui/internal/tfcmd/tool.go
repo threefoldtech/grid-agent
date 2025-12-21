@@ -81,7 +81,6 @@ VALIDATION RULES:
 - Check that ALL required positional arguments are provided (look for "args" in the schema)
 - Evaluate the 'Mutually Exclusive Flags' and 'Flag Groups' sections for the target subcommand.
 - If any required flags or arguments are missing, ask the user first
-- resources names must contain only letters and numbers
 - Always remember that deploy kubernetes|vm --ssh flag takes the file path not the file content
 
 FLAG GROUPS (must be set together):
