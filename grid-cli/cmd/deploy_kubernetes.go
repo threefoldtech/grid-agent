@@ -289,7 +289,7 @@ Examples:
 func init() {
 	deployCmd.AddCommand(deployKubernetesCmd)
 
-	deployKubernetesCmd.Flags().StringP("name", "n", "", "name of the kubernetes cluster")
+	deployKubernetesCmd.Flags().StringP("name", "n", "", "name of the kubernetes cluster (alphanumeric only)")
 	err := deployKubernetesCmd.MarkFlagRequired("name")
 	if err != nil {
 		log.Fatal().Err(err).Send()

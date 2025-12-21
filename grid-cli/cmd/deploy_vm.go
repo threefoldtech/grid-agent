@@ -333,7 +333,7 @@ Examples:
 func init() {
 	deployCmd.AddCommand(deployVMCmd)
 
-	deployVMCmd.Flags().StringP("name", "n", "", "name of the virtual machine")
+	deployVMCmd.Flags().StringP("name", "n", "", "name of the virtual machine (alphanumeric only)")
 	err := deployVMCmd.MarkFlagRequired("name")
 	if err != nil {
 		log.Fatal().Err(err).Send()
@@ -345,11 +345,11 @@ func init() {
 		log.Fatal().Err(err).Send()
 	}
 
-	deployVMCmd.Flags().Uint32("node", 0, "node id vm should be deployed on")
-	deployVMCmd.Flags().Uint64("farm", 0, "farm ID for deployment (0 = any farm, or specify farm ID)")
+	deployVMCmd.Flags().Uint32("node", 0, "node id vm should be deployed on (omit for auto selection)")
+	deployVMCmd.Flags().Uint64("farm", 0, "farm ID for deployment (omit for auto selection)")
 	deployVMCmd.MarkFlagsMutuallyExclusive("node", "farm")
 	deployVMCmd.Flags().String("network", "", "name of existing network to deploy VM on. If not specified, a new network will be created default to '{vmname}network'")
-	deployVMCmd.Flags().String("project-name", "", "project name for the VM deployment. Defaults to 'vm/{vmname}' if not specified. Required when using --network")
+	deployVMCmd.Flags().String("project-name", "", "project name for grouping deployments (only alphanumeric and '/' allowed). Defaults to 'vm/{vmname}' if not specified. Required when using --network.")
 
 	deployVMCmd.Flags().Uint8("cpu", 1, "number of cpu units")
 	deployVMCmd.Flags().Uint64("memory", 1, "memory size in GB (e.g., --memory 2 for 2GB RAM)")

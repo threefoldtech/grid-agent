@@ -16,7 +16,7 @@ var deployGatewayCmd = &cobra.Command{
 func init() {
 	deployCmd.AddCommand(deployGatewayCmd)
 
-	deployGatewayCmd.PersistentFlags().StringP("name", "n", "", "name of the gateway")
+	deployGatewayCmd.PersistentFlags().StringP("name", "n", "", "name of the gateway (alphanumeric only)")
 	err := deployGatewayCmd.MarkPersistentFlagRequired("name")
 	if err != nil {
 		log.Fatal().Err(err).Send()
@@ -29,8 +29,8 @@ func init() {
 	}
 
 	deployGatewayCmd.PersistentFlags().Bool("tls", false, "add tls passthrough")
-	deployGatewayCmd.PersistentFlags().String("network", "", "network name (optional, for reference - gateway proxies to backend IP)")
-	deployGatewayCmd.PersistentFlags().String("project-name", "", "project name for grouping deployments (required when using --network)")
+	deployGatewayCmd.PersistentFlags().String("network", "", "name of existing network to extend to gateway node (required when backend uses private WireGuard IPs)")
+	deployGatewayCmd.PersistentFlags().String("project-name", "", "project name for grouping deployments (only alphanumeric and '/' allowed). Required when using --network)")
 }
 
 func parseCommonGatewayFlags(cmd *cobra.Command) (

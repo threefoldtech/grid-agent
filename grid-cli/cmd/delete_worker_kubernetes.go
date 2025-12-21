@@ -82,7 +82,7 @@ Examples:
 func init() {
 	updateKubernetesCmd.AddCommand(deleteWorkerCmd)
 
-	deleteWorkerCmd.Flags().StringP("name", "n", "", "name of the kubernetes cluster")
+	deleteWorkerCmd.Flags().StringP("name", "n", "", "name of the kubernetes cluster (alphanumeric only)")
 	err := deleteWorkerCmd.MarkFlagRequired("name")
 	if err != nil {
 		log.Fatal().Err(err).Send()
