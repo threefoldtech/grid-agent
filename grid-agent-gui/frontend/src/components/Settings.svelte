@@ -31,16 +31,23 @@
   let formInstructions = "";
 
   // Advanced Settings
+  let advancedProvider = "gemini";
   let advancedModel = "";
   let advancedApiKey = "";
   let isEditingApiKey = false;
   let tempApiKey = "";
+  let providerDropdownOpen = false;
   let modelDropdownOpen = false;
   let showApiKey = false;
 
   // Track original values for change detection
+  let originalProvider = "gemini";
   let originalApiKey = "";
   let originalModel = "";
+
+  // Store API keys separately to prevent cross-contamination
+  let storedGeminiKey = "";
+  let storedOpenrouterKey = "";
 
   // Grid Settings
   let gridMnemonics = "";
@@ -66,13 +73,34 @@
   // Track modal visibility for latch
   let prevShow = false;
 
-  const availableModels = [
-    "gemini-3-pro-preview",
-    "gemini-3-flash-preview",
-    "gemini-2.5-pro",
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
-    "gemini-robotics-er-1.5-preview",
+  const availableModels = {
+    gemini: [
+      "gemini-3-pro-preview",
+      "gemini-3-flash-preview",
+      "gemini-2.5-pro",
+      "gemini-2.5-flash",
+      "gemini-2.5-flash-lite",
+      "gemini-robotics-er-1.5-preview",
+    ],
+    openrouter: [
+      "google/gemini-3-flash-preview",
+      "mistralai/mistral-small-creative",
+      "xiaomi/mimo-v2-flash:free",
+      "nvidia/nemotron-3-nano-30b-a3b:free",
+      "nvidia/nemotron-3-nano-30b-a3b",
+      "openai/gpt-5.2-chat",
+      "mistralai/devstral-2512:free",
+      "nex-agi/deepseek-v3.1-nex-n1:free",
+      "arcee-ai/trinity-mini:free",
+      "tngtech/tng-r1t-chimera:free",
+      "x-ai/grok-4.1-fast",
+      "google/gemini-3-pro-preview",
+    ],
+  };
+
+  const availableProviders = [
+    { id: "gemini", name: "Google Gemini" },
+    { id: "openrouter", name: "OpenRouter" },
   ];
 
   // --- Reactivity ---
@@ -86,10 +114,16 @@
     if (show && settingsStore) {
       resetState();
       if ($settingsStore) {
-        advancedApiKey = $settingsStore.geminiApiKey || "";
+        // Load stored API keys
+        storedGeminiKey = $settingsStore.geminiApiKey || "";
+        storedOpenrouterKey = $settingsStore.openrouterApiKey || "";
+
+        advancedProvider = $settingsStore.provider || "gemini";
+        advancedApiKey = ($settingsStore.provider === "openrouter" ? storedOpenrouterKey : storedGeminiKey) || "";
         advancedModel = $settingsStore.model || "gemini-3-flash-preview";
         enableExportSummary = $settingsStore.enableExportSummary || false;
         // Store original values
+        originalProvider = advancedProvider;
         originalApiKey = advancedApiKey;
         originalModel = advancedModel;
         originalEnableExportSummary = enableExportSummary;
@@ -107,12 +141,20 @@
     prevShow = show;
   }
 
+  // Update API key when provider changes
+  $: if (advancedProvider !== originalProvider) {
+    // When provider changes, update the API key field to reflect the stored key for the new provider
+    // or clear it if no key is stored for the new provider
+    advancedApiKey = (advancedProvider === "openrouter" ? storedOpenrouterKey : storedGeminiKey) || "";
+  }
+
   // Detect if config has changed
   let enableExportSummary = false;
   let originalEnableExportSummary = false;
 
   $: configHasChanged =
-    (advancedApiKey !== originalApiKey ||
+    (advancedProvider !== originalProvider ||
+      advancedApiKey !== originalApiKey ||
       advancedModel !== originalModel ||
       enableExportSummary !== originalEnableExportSummary) &&
     advancedApiKey.trim() !== "";
@@ -131,6 +173,7 @@
   function resetState() {
     activeSection = "personas";
     error = "";
+    providerDropdownOpen = false;
     modelDropdownOpen = false;
     networkDropdownOpen = false;
     cancelApiKeyEdit();
@@ -140,23 +183,22 @@
   function switchSection(section: string) {
     activeSection = section;
     error = "";
+    providerDropdownOpen = false;
     modelDropdownOpen = false;
     cancelEdit();
   }
 
   // Close dropdown when clicking outside
   function handleDropdownClickOutside(event: MouseEvent) {
-    if (modelDropdownOpen) {
-      const target = event.target as HTMLElement;
-      if (!target.closest(".custom-select")) {
-        modelDropdownOpen = false;
-      }
+    const target = event.target as HTMLElement;
+    if (providerDropdownOpen && !target.closest(".custom-select")) {
+      providerDropdownOpen = false;
     }
-    if (networkDropdownOpen) {
-      const target = event.target as HTMLElement;
-      if (!target.closest(".custom-select")) {
-        networkDropdownOpen = false;
-      }
+    if (modelDropdownOpen && !target.closest(".custom-select") && !target.closest(".custom-model-input")) {
+      modelDropdownOpen = false;
+    }
+    if (networkDropdownOpen && !target.closest(".custom-select")) {
+      networkDropdownOpen = false;
     }
   }
 
@@ -259,12 +301,14 @@
     }
     try {
       const newSettings = await UpdateAdvancedSettings(
+        advancedProvider,
         advancedApiKey,
         advancedModel,
         enableExportSummary,
       );
       settingsStore.set(newSettings);
       // Update original values after successful save
+      originalProvider = advancedProvider;
       originalApiKey = advancedApiKey;
       originalModel = advancedModel;
       originalEnableExportSummary = enableExportSummary;
@@ -658,14 +702,14 @@
 
             <div class="config-form">
               <div class="input-group">
-                <label for="adv-model">AI Model</label>
-                <div class="custom-select" class:open={modelDropdownOpen}>
+                <label for="adv-provider">AI Provider</label>
+                <div class="custom-select" class:open={providerDropdownOpen}>
                   <button
                     type="button"
                     class="select-trigger"
-                    on:click={() => (modelDropdownOpen = !modelDropdownOpen)}
+                    on:click={() => (providerDropdownOpen = !providerDropdownOpen)}
                   >
-                    <span>{advancedModel || "Select a model"}</span>
+                    <span>{availableProviders.find(p => p.id === advancedProvider)?.name || "Select a provider"}</span>
                     <svg
                       width="12"
                       height="12"
@@ -674,27 +718,31 @@
                       stroke="currentColor"
                       stroke-width="2"
                       class="select-arrow"
-                      class:rotated={modelDropdownOpen}
+                      class:rotated={providerDropdownOpen}
                     >
                       <path d="M2 4l4 4 4-4" />
                     </svg>
                   </button>
-                  {#if modelDropdownOpen}
+                  {#if providerDropdownOpen}
                     <div
                       class="select-dropdown"
                       transition:slide={{ duration: 200 }}
                     >
-                      {#each availableModels as m}
+                      {#each availableProviders as p}
                         <button
                           type="button"
                           class="select-option"
-                          class:selected={advancedModel === m}
+                          class:selected={advancedProvider === p.id}
                           on:click={() => {
-                            advancedModel = m;
-                            modelDropdownOpen = false;
+                            advancedProvider = p.id;
+                            // Reset model if it's not available for the new provider
+                            if (!availableModels[advancedProvider].includes(advancedModel)) {
+                              advancedModel = availableModels[advancedProvider][0] || "";
+                            }
+                            providerDropdownOpen = false;
                           }}
                         >
-                          {m}
+                          {p.name}
                         </button>
                       {/each}
                     </div>
@@ -703,7 +751,164 @@
               </div>
 
               <div class="input-group">
-                <label for="adv-key">Gemini API Key</label>
+                <label for="adv-model">AI Model</label>
+                {#if advancedProvider === "gemini"}
+                  <!-- Dropdown for Gemini -->
+                  <div class="custom-select" class:open={modelDropdownOpen}>
+                    <button
+                      type="button"
+                      class="select-trigger"
+                      on:click={() => (modelDropdownOpen = !modelDropdownOpen)}
+                    >
+                      <span>{advancedModel || "Select a model"}</span>
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 12 12"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        class="select-arrow"
+                        class:rotated={modelDropdownOpen}
+                      >
+                        <path d="M2 4l4 4 4-4" />
+                      </svg>
+                    </button>
+                    {#if modelDropdownOpen}
+                      <div
+                        class="select-dropdown"
+                        transition:slide={{ duration: 200 }}
+                      >
+                        {#each availableModels[advancedProvider] || [] as m}
+                          <button
+                            type="button"
+                            class="select-option"
+                            class:selected={advancedModel === m}
+                            on:click={() => {
+                              advancedModel = m;
+                              modelDropdownOpen = false;
+                            }}
+                          >
+                            {m}
+                          </button>
+                        {/each}
+                      </div>
+                    {/if}
+                  </div>
+                {:else if advancedProvider === "openrouter"}
+                  <!-- Dropdown for OpenRouter with Custom option -->
+                  {#if advancedModel !== "custom"}
+                    <div class="custom-select" class:open={modelDropdownOpen}>
+                      <button
+                        type="button"
+                        class="select-trigger"
+                        on:click={() => (modelDropdownOpen = !modelDropdownOpen)}
+                      >
+                        <span>{advancedModel || "Select a model"}</span>
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 12 12"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          class="select-arrow"
+                          class:rotated={modelDropdownOpen}
+                        >
+                          <path d="M2 4l4 4 4-4" />
+                        </svg>
+                      </button>
+                      {#if modelDropdownOpen}
+                        <div
+                          class="select-dropdown"
+                          transition:slide={{ duration: 200 }}
+                        >
+                          {#each availableModels[advancedProvider] || [] as m}
+                            <button
+                              type="button"
+                              class="select-option"
+                              class:selected={advancedModel === m}
+                              on:click={() => {
+                                advancedModel = m;
+                                modelDropdownOpen = false;
+                              }}
+                            >
+                              {m}
+                            </button>
+                          {/each}
+                          <div class="dropdown-separator"></div>
+                          <button
+                            type="button"
+                            class="select-option custom-option"
+                            on:click={() => {
+                              advancedModel = "custom";
+                              modelDropdownOpen = false;
+                            }}
+                          >
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            >
+                              <path d="M12 5v14M5 12h14"></path>
+                            </svg>
+                            Custom Model
+                          </button>
+                        </div>
+                      {/if}
+                    </div>
+                  {:else}
+                    <!-- Custom model input -->
+                    <div class="custom-model-input">
+                      <input
+                        id="adv-model"
+                        type="text"
+                        bind:value={advancedModel}
+                        placeholder="Enter custom OpenRouter model name"
+                        autocomplete="off"
+                        on:input={() => {
+                          // Keep "custom" as a special value, don't override with user input
+                          if (advancedModel === "custom") {
+                            advancedModel = "";
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        class="btn small outline back-to-dropdown"
+                        on:click={() => {
+                          advancedModel = availableModels.openrouter[0] || "";
+                        }}
+                      >
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <path d="M19 12H5M12 19l-7-7 7-7"></path>
+                        </svg>
+                        Back to List
+                      </button>
+                    </div>
+                    <p class="helper-text">
+                      Enter any OpenRouter model name (e.g., deepseek/deepseek-r1-0528:free)
+                    </p>
+                  {/if}
+                {/if}
+              </div>
+
+              <div class="input-group">
+                <label for="adv-key">{availableProviders.find(p => p.id === advancedProvider)?.name || "Provider"} API Key</label>
                 {#if isEditingApiKey}
                   <div class="api-key-edit">
                     <input
@@ -1638,6 +1843,46 @@
 
   .section-content::-webkit-scrollbar-thumb:hover {
     background: var(--text-secondary);
+  }
+
+
+
+  /* Dropdown Separator */
+  .dropdown-separator {
+    height: 1px;
+    background: var(--border);
+    margin: 0.5rem 0;
+  }
+
+  /* Custom Option Styling */
+  .custom-option {
+    color: var(--accent) !important;
+    font-weight: 600;
+  }
+
+  .custom-option:hover {
+    background: var(--accent);
+    color: white !important;
+  }
+
+  .custom-option svg {
+    margin-right: 0.5rem;
+  }
+
+  /* Custom Model Input */
+  .custom-model-input {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+  }
+
+  .custom-model-input input {
+    flex: 1;
+  }
+
+  .back-to-dropdown {
+    flex-shrink: 0;
+    white-space: nowrap;
   }
 
   /* Toggle Switch Styles */
