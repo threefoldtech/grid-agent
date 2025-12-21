@@ -32,6 +32,7 @@
   let showErrorModal = false;
   let showSettings = false;
   let showDocs = false;
+  let showClearModal = false;
   let errorMessage = "";
   let isExporting = false;
   let isAborting = false;
@@ -233,6 +234,102 @@
   function closeErrorModal() {
     showErrorModal = false;
     errorMessage = "";
+  }
+
+  function handleClear() {
+    showClearModal = true;
+  }
+
+  function clearConversation() {
+    showClearModal = false;
+    messagesStore.set([]);
+  }
+
+  async function saveAndClear() {
+    showClearModal = false;
+    await handleExport();
+    messagesStore.set([]);
+  }
+
+  function editMessage(index: number, newContent: string) {
+    // First update the message content and timestamp
+    messagesStore.update((msgs) => {
+      const newMsgs = [...msgs];
+      if (newMsgs[index] && newMsgs[index].role === "user") {
+        newMsgs[index] = { ...newMsgs[index], content: newContent, timestamp: new Date().toISOString() };
+      }
+      return newMsgs;
+    });
+
+    // If this user message has an agent response immediately following, retrigger AI
+    const messages = $messagesStore;
+    const nextIndex = index + 1;
+    if (messages[index].role === "user" && nextIndex < messages.length && messages[nextIndex].role === "agent") {
+      // Remove the agent response
+      messagesStore.update((msgs) => {
+        return msgs.filter((_, i) => i !== nextIndex);
+      });
+
+      // Add placeholder for new response
+      const requestID = `req_${Date.now()}_${Math.random()}`;
+      const placeholderMsg = {
+        role: "agent",
+        content: "",
+        timestamp: new Date().toISOString(),
+        requestID: requestID,
+        steps: [
+          {
+            progressText: "🤔 Processing your request...",
+            exportPrefix: "",
+            content: "Processing your request...",
+            output: "",
+            error: "",
+          },
+        ],
+      };
+      messagesStore.update((msgs) => [...msgs, placeholderMsg]);
+
+      // Send the edited message directly
+      (async () => {
+        isSending = true;
+        currentRequestID = requestID;
+        try {
+          const response = await SendMessage(newContent, requestID);
+          messagesStore.update((msgs) => {
+            const idx = msgs.findIndex((m) => m.requestID === response.requestID);
+            if (idx !== -1) {
+              const newMsgs = [...msgs];
+              newMsgs[idx] = response;
+              return newMsgs;
+            }
+            return [...msgs, response]; // Fallback
+          });
+        } catch (error) {
+          console.error("Failed to send message:", error);
+          messagesStore.update((msgs) => {
+            const idx = msgs.findIndex((m) => m.requestID === requestID);
+            if (idx !== -1) {
+              const existingMsg = msgs[idx];
+              const steps = (existingMsg.steps || []).filter(
+                (s) => !s.progressText?.includes("🤔 Processing"),
+              );
+              steps.push({
+                progressText: "❌ Error",
+                exportPrefix: "",
+                content: "",
+                output: "",
+                error: String(error),
+              });
+              msgs[idx] = { ...existingMsg, content: error, steps };
+            }
+            return [...msgs];
+          });
+        } finally {
+          isSending = false;
+          currentRequestID = "";
+        }
+      })();
+    }
   }
 
   function toggleSettings() {
@@ -612,6 +709,25 @@
           >
         {/if}
       </button>
+      <button
+        class="icon-btn clear-btn"
+        on:click={handleClear}
+        title="Clear Conversation"
+        disabled={$messagesStore.length === 0}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          ><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M10 11v6" /><path d="M14 11v6" /></svg
+        >
+      </button>
       <button class="icon-btn" on:click={toggleDocs} title="Help">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -708,8 +824,8 @@
       </div>
     {/if}
 
-    {#each $messagesStore as msg}
-      <ChatMessage message={msg} />
+    {#each $messagesStore as msg, index}
+      <ChatMessage message={msg} on:edit={(e) => editMessage(index, e.detail.content)} />
     {/each}
   </div>
 
@@ -800,6 +916,21 @@
       <p class="error-text">{@html renderAnsi(errorMessage)}</p>
       <div class="modal-actions">
         <button class="btn primary" on:click={closeErrorModal}>OK</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Clear Modal -->
+{#if showClearModal}
+  <div class="modal-overlay" on:click={() => showClearModal = false} transition:fade>
+    <div class="modal" on:click|stopPropagation transition:fade>
+      <h2>Clear Conversation</h2>
+      <p>If you clear the window context you will not be able to retrieve the conversation.</p>
+      <div class="modal-actions">
+        <button class="btn primary" on:click={saveAndClear}>Save and Clear</button>
+        <button class="btn danger" on:click={clearConversation}>Clear</button>
+        <button class="btn secondary" on:click={() => showClearModal = false}>Cancel</button>
       </div>
     </div>
   </div>
@@ -966,6 +1097,15 @@
   }
 
   .logout-btn:hover {
+    color: var(--error);
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  .clear-btn {
+    color: var(--text-secondary);
+  }
+
+  .clear-btn:hover {
     color: var(--error);
     background: rgba(239, 68, 68, 0.1);
   }
