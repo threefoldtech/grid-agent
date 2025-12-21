@@ -6,6 +6,7 @@
     SaveSettings,
     SendMessage,
     SetTheme,
+    AcknowledgeDisclaimer,
   } from "../wailsjs/go/main/App.js";
   import Onboarding from "./components/Onboarding.svelte";
   import ChatInterface from "./components/ChatInterface.svelte";
@@ -18,6 +19,8 @@
   let currentTheme = "dark";
   let errorMessage = "";
   let showErrorModal = false;
+  let disclaimerAcknowledged = false;
+  let isAcknowledging = false;
 
   // ANSI to HTML converter for error messages
   const ansiConverter = new AnsiToHtml({
@@ -36,6 +39,7 @@
     try {
       const settings = await GetSettings();
       isConfigured = settings.isConfigured;
+      disclaimerAcknowledged = settings.disclaimerAcknowledged;
       currentTheme = settings.theme || "dark";
       themeStore.set(currentTheme);
       settingsStore.set(settings);
@@ -68,6 +72,22 @@
     errorMessage = "";
   }
 
+  async function handleAcknowledgeDisclaimer() {
+    isAcknowledging = true;
+    try {
+      await AcknowledgeDisclaimer();
+      disclaimerAcknowledged = true;
+      const settings = await GetSettings();
+      settingsStore.set(settings);
+    } catch (error) {
+      console.error("Failed to acknowledge disclaimer:", error);
+      errorMessage = "Failed to save acknowledgment: " + error;
+      showErrorModal = true;
+    } finally {
+      isAcknowledging = false;
+    }
+  }
+
   async function toggleTheme() {
     const newTheme = currentTheme === "dark" ? "light" : "dark";
     currentTheme = newTheme;
@@ -86,6 +106,36 @@
     </div>
   {:else if !isConfigured}
     <Onboarding on:complete={handleOnboardingComplete} />
+  {:else if !disclaimerAcknowledged}
+    <!-- Beta Disclaimer Modal -->
+    <div class="disclaimer-container">
+      <div class="disclaimer-modal" transition:fade>
+        <h1 class="disclaimer-title">Early Beta Software</h1>
+        <div class="disclaimer-content">
+          <p class="disclaimer-intro">
+            This application is currently in early beta and may contain bugs or unexpected behavior. Please review the following before proceeding:
+          </p>
+          <ul class="disclaimer-list">
+            <li>This is experimental software under active development</li>
+            <li>Responses depend on the AI model and may be unpredictable</li>
+            <li>AI models can generate incorrect or misleading information</li>
+            <li>Always verify important actions and review commands before execution</li>
+          </ul>
+        </div>
+        <button 
+          class="btn disclaimer-btn" 
+          on:click={handleAcknowledgeDisclaimer}
+          disabled={isAcknowledging}
+        >
+          {#if isAcknowledging}
+            <span class="spinner-small"></span>
+            Processing...
+          {:else}
+            I Understand
+          {/if}
+        </button>
+      </div>
+    </div>
   {:else}
     <ChatInterface {toggleTheme} theme={currentTheme} />
   {/if}
@@ -303,5 +353,98 @@
 
   .btn.primary:hover {
     background: var(--accent-hover);
+  }
+
+  /* Beta Disclaimer Styles */
+  .disclaimer-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    padding: 2rem;
+    background: var(--bg-primary);
+  }
+
+  .disclaimer-modal {
+    background: var(--bg-secondary);
+    border-radius: 1rem;
+    padding: 2.5rem 3rem;
+    max-width: 540px;
+    width: 100%;
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+
+  .disclaimer-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 1.5rem 0;
+  }
+
+  .disclaimer-content {
+    text-align: left;
+    margin-bottom: 2rem;
+  }
+
+  .disclaimer-intro {
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    text-align: left;
+  }
+
+  .disclaimer-list {
+    list-style: disc;
+    margin: 0;
+    padding-left: 1.5rem;
+    color: var(--text-secondary);
+  }
+
+  .disclaimer-list li {
+    font-size: 0.875rem;
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+  }
+
+  .disclaimer-list li:last-child {
+    margin-bottom: 0;
+  }
+
+  .disclaimer-btn {
+    width: 100%;
+    padding: 0.875rem 1.5rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    border: none;
+    background: var(--accent);
+    color: white;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .disclaimer-btn:hover:not(:disabled) {
+    background: var(--accent-hover);
+  }
+
+  .disclaimer-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .spinner-small {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
   }
 </style>

@@ -4,6 +4,8 @@ import {main} from '../models';
 
 export function AbortWorkflow(arg1:string):Promise<void>;
 
+export function AcknowledgeDisclaimer():Promise<void>;
+
 export function ActivateProfile(arg1:string):Promise<main.Settings>;
 
 export function AddProfile(arg1:string,arg2:string):Promise<main.Settings>;

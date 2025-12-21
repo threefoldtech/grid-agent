@@ -94,6 +94,7 @@ export namespace main {
 	    profiles: Profile[];
 	    activeProfileID: string;
 	    enableExportSummary: boolean;
+	    disclaimerAcknowledged: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -110,6 +111,7 @@ export namespace main {
 	        this.profiles = this.convertValues(source["profiles"], Profile);
 	        this.activeProfileID = source["activeProfileID"];
 	        this.enableExportSummary = source["enableExportSummary"];
+	        this.disclaimerAcknowledged = source["disclaimerAcknowledged"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

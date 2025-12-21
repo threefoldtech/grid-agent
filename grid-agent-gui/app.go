@@ -40,15 +40,16 @@ type App struct {
 
 // Settings holds user configuration
 type Settings struct {
-	Mnemonics           string    `json:"mnemonics"`
-	Network             string    `json:"network"` // mainnet, testnet, devnet
-	GeminiAPIKey        string    `json:"geminiApiKey"`
-	Model               string    `json:"model"`
-	Theme               string    `json:"theme"` // light, dark
-	IsConfigured        bool      `json:"isConfigured"`
-	Profiles            []Profile `json:"profiles"`
-	ActiveProfileID     string    `json:"activeProfileID"`
-	EnableExportSummary bool      `json:"enableExportSummary"` // Generate AI summary on export (uses tokens)
+	Mnemonics              string    `json:"mnemonics"`
+	Network                string    `json:"network"` // mainnet, testnet, devnet
+	GeminiAPIKey           string    `json:"geminiApiKey"`
+	Model                  string    `json:"model"`
+	Theme                  string    `json:"theme"` // light, dark
+	IsConfigured           bool      `json:"isConfigured"`
+	Profiles               []Profile `json:"profiles"`
+	ActiveProfileID        string    `json:"activeProfileID"`
+	EnableExportSummary    bool      `json:"enableExportSummary"`    // Generate AI summary on export (uses tokens)
+	DisclaimerAcknowledged bool      `json:"disclaimerAcknowledged"` // User has acknowledged beta disclaimer
 }
 
 // Profile represents a user personalization profile
@@ -498,6 +499,12 @@ func (a *App) AbortWorkflow(requestID string) error {
 // SetTheme updates the theme
 func (a *App) SetTheme(theme string) error {
 	a.settings.Theme = theme
+	return a.saveSettingsToFile()
+}
+
+// AcknowledgeDisclaimer sets the disclaimer as acknowledged
+func (a *App) AcknowledgeDisclaimer() error {
+	a.settings.DisclaimerAcknowledged = true
 	return a.saveSettingsToFile()
 }
 

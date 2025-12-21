@@ -6,6 +6,10 @@ export function AbortWorkflow(arg1) {
   return window['go']['main']['App']['AbortWorkflow'](arg1);
 }
 
+export function AcknowledgeDisclaimer() {
+  return window['go']['main']['App']['AcknowledgeDisclaimer']();
+}
+
 export function ActivateProfile(arg1) {
   return window['go']['main']['App']['ActivateProfile'](arg1);
 }
