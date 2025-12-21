@@ -116,15 +116,22 @@
           <h4>🤖 AI Configuration</h4>
           <p>Configure the AI model and behavior settings.</p>
 
+          <h5>Provider Options</h5>
+          <ul>
+            <li><strong>Google Gemini:</strong> Cloud-based AI with API key (default)</li>
+            <li><strong>Ollama (Local):</strong> Run AI models locally for privacy and no API costs</li>
+          </ul>
+
           <h5>How to Configure AI Settings</h5>
           <ol>
             <li>Click <strong>"AI Configuration"</strong> in the sidebar</li>
-            <li><strong>Model Selection:</strong> Choose from available Gemini models (higher models = better responses but more tokens)</li>
-            <li><strong>API Key:</strong> Click "Show" to reveal, "Change" to update</li>
+            <li><strong>Provider Selection:</strong> Choose between Google Gemini or Ollama</li>
+            <li><strong>Model Selection:</strong> Pick from available models for your chosen provider</li>
+            <li><strong>API Key:</strong> Required for Gemini, not needed for Ollama</li>
             <li><strong>Export Summary:</strong> Enable AI-generated summaries when exporting conversations</li>
           </ol>
 
-          <h5>Available Models</h5>
+          <h5>Gemini Models</h5>
           <ul>
             <li><strong>gemini-3-flash-preview:</strong> Latest and fastest (recommended)</li>
             <li><strong>gemini-3-pro-preview:</strong> Most capable Gemini 3 model</li>
@@ -137,6 +144,107 @@
           <ul>
             <li><strong>With Summary:</strong> AI generates a summary of your conversation</li>
             <li><strong>Without Summary:</strong> Saves tokens, just exports the raw conversation</li>
+          </ul>
+        </div>
+
+        <!-- Ollama Local AI Setup -->
+        <div class="docs-section">
+          <h4>🏠 Ollama Local AI Setup</h4>
+          <p>Run AI models locally on your machine for maximum privacy and zero API costs.</p>
+
+          <h5>Why Use Ollama?</h5>
+          <ul>
+            <li><strong>Complete Privacy:</strong> Your conversations never leave your machine</li>
+            <li><strong>No API Costs:</strong> Unlimited usage with no monthly fees</li>
+            <li><strong>Offline Capable:</strong> Works without internet connection</li>
+            <li><strong>High Performance:</strong> Instant responses with local processing</li>
+          </ul>
+
+          <h5>Step 1: Install Ollama</h5>
+          <div class="code-example">
+            <p><strong>For macOS:</strong></p>
+            <p>brew install ollama</p>
+            <br>
+            <p><strong>For Linux:</strong></p>
+            <p>curl -fsSL https://ollama.ai/install.sh | sh</p>
+            <br>
+            <p><strong>For Windows:</strong></p>
+            <p>Download from <a href="https://ollama.ai/download" target="_blank" rel="noopener noreferrer">ollama.ai/download</a></p>
+          </div>
+
+          <h5>Step 2: Quick Setup (Choose One)</h5>
+
+          <h6>Native Installation (Recommended)</h6>
+          <div class="code-example">
+            <p># 1. Start Ollama in background</p>
+            <p>ollama serve &</p>
+            <br>
+            <p># 2. Verify it's running</p>
+            <p>curl http://localhost:11434/api/version</p>
+            <br>
+            <p># 3. Pull a model</p>
+            <p>ollama pull llama3.1:8b</p>
+            <br>
+            <p># 4. Check models</p>
+            <p>ollama list</p>
+            <br>
+            <p># 5. Use Grid Agent!</p>
+            <p># (configure to use Ollama)</p>
+            <br>
+            <p># 6. Stop when done</p>
+            <p>pkill -f "ollama serve"</p>
+          </div>
+
+          <h6>Docker Installation</h6>
+          <div class="code-example">
+            <p># 1. Start Ollama container</p>
+            <p>docker run -d -v ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama</p>
+            <br>
+            <p># 2. Verify it's running</p>
+            <p>curl http://localhost:11434/api/version</p>
+            <br>
+            <p># 3. Pull a model</p>
+            <p>docker exec -it ollama ollama pull llama3.1:8b</p>
+            <br>
+            <p># 4. Check models</p>
+            <p>docker exec -it ollama ollama list</p>
+            <br>
+            <p># 5. Use Grid Agent!</p>
+            <p># (configure to use Ollama)</p>
+            <br>
+            <p># 6. Stop when done</p>
+            <p>docker stop ollama</p>
+          </div>
+
+          <h5>Step 4: Configure Grid Agent</h5>
+          <ol>
+            <li>Open Grid Agent and go to <strong>"AI Configuration"</strong></li>
+            <li>Select <strong>"Ollama (Local)"</strong> as the provider</li>
+            <li>Choose your downloaded model from the dropdown</li>
+            <li>Click <strong>"Save Configuration"</strong></li>
+          </ol>
+
+          <h5>Troubleshooting</h5>
+          <ul>
+            <li><strong>"Cannot connect to Ollama":</strong> Make sure Ollama is running with <code>ollama serve</code></li>
+            <li><strong>"Model not found":</strong> Pull the model first with <code>ollama pull modelname</code></li>
+            <li><strong>Slow responses:</strong> Larger models take more resources but give better results</li>
+            <li><strong>Out of memory:</strong> Try smaller models like <code>llama3.1:8b</code> or <code>qwen2.5:7b</code></li>
+          </ul>
+
+          <h5>Model Recommendations</h5>
+          <ul>
+            <li><strong>llama3.1:8b:</strong> Best balance of capability and resource usage</li>
+            <li><strong>qwen2.5:7b:</strong> Excellent reasoning and tool calling</li>
+            <li><strong>mistral:7b:</strong> Fast and reliable for most tasks</li>
+            <li><strong>llama3.1:70b:</strong> Maximum capability (requires more RAM)</li>
+          </ul>
+
+          <h5>System Requirements</h5>
+          <ul>
+            <li><strong>RAM:</strong> Minimum 8GB, recommended 16GB+</li>
+            <li><strong>Storage:</strong> 5-40GB free space depending on model size</li>
+            <li><strong>CPU/GPU:</strong> Modern processor (GPU recommended for better performance)</li>
           </ul>
         </div>
 

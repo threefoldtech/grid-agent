@@ -87,7 +87,9 @@ export namespace main {
 	export class Settings {
 	    mnemonics: string;
 	    network: string;
+	    provider: string;
 	    geminiApiKey: string;
+	    ollamaBaseURL: string;
 	    model: string;
 	    theme: string;
 	    isConfigured: boolean;
@@ -108,7 +110,9 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.mnemonics = source["mnemonics"];
 	        this.network = source["network"];
+	        this.provider = source["provider"];
 	        this.geminiApiKey = source["geminiApiKey"];
+	        this.ollamaBaseURL = source["ollamaBaseURL"];
 	        this.model = source["model"];
 	        this.theme = source["theme"];
 	        this.isConfigured = source["isConfigured"];

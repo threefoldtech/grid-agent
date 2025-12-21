@@ -44,7 +44,9 @@ type App struct {
 type Settings struct {
 	Mnemonics              string          `json:"mnemonics"`
 	Network                string          `json:"network"` // mainnet, testnet, devnet
+	Provider               string          `json:"provider"` // "gemini", "ollama"
 	GeminiAPIKey           string          `json:"geminiApiKey"`
+	OllamaBaseURL          string          `json:"ollamaBaseURL"`          // usually "http://localhost:11434"
 	Model                  string          `json:"model"`
 	Theme                  string          `json:"theme"` // light, dark
 	IsConfigured           bool            `json:"isConfigured"`
@@ -56,6 +58,20 @@ type Settings struct {
 	ToolApprovalOverrides  map[string]bool `json:"toolApprovalOverrides"`  // Per-tool approval overrides
 	SafetyMode             string          `json:"safetyMode"`             // "manual", "smart", "turbo"
 	SmartSafetyThreshold   string          `json:"smartSafetyThreshold"`   // "medium", "high"
+}
+=======
+	Mnemonics           string    `json:"mnemonics"`
+	Network             string    `json:"network"` // mainnet, testnet, devnet
+	Provider            string    `json:"provider"` // "gemini", "ollama"
+	GeminiAPIKey        string    `json:"geminiApiKey"`
+	OllamaBaseURL       string    `json:"ollamaBaseURL"` // usually "http://localhost:11434"
+	Model               string    `json:"model"`
+	Theme               string    `json:"theme"` // light, dark
+	IsConfigured        bool      `json:"isConfigured"`
+	Profiles            []Profile `json:"profiles"`
+	ActiveProfileID     string    `json:"activeProfileID"`
+	EnableExportSummary bool      `json:"enableExportSummary"` // Generate AI summary on export (uses tokens)
+>>>>>>> origin/development-ollama
 }
 
 // Profile represents a user personalization profile
@@ -863,8 +879,12 @@ func (a *App) initializeAgent(opts AgentInitOptions) error {
 		modelName = a.settings.Model
 	}
 
-	// Create LLM provider with dynamic tool documentation
+	// Determine provider and create appropriate LLM provider
+	var provider llm.Provider
+	var err error
+
 	providerConfig := llm.Config{
+		Provider:         a.settings.Provider,
 		ModelName:        modelName,
 		ResponseMIMEType: "application/json",
 		SystemPrompt:     strings.Replace(internalConfig.GetSystemPrompt(a.settings.Network, a.getActiveInstructions()), "{{TOOL_DESCRIPTIONS}}", toolDocs, 1),
@@ -874,7 +894,15 @@ func (a *App) initializeAgent(opts AgentInitOptions) error {
 		History:          history,   // Pass previous history
 	}
 
-	provider, err := llm.NewGeminiProviderWithConfig(a.settings.GeminiAPIKey, providerConfig)
+	switch a.settings.Provider {
+	case "ollama":
+		provider, err = llm.NewOllamaProviderWithConfig(a.settings.OllamaBaseURL, providerConfig)
+	case "gemini":
+		fallthrough
+	default:
+		provider, err = llm.NewGeminiProviderWithConfig(a.settings.GeminiAPIKey, providerConfig)
+	}
+
 	if err != nil {
 		return err
 	}
@@ -988,13 +1016,24 @@ func (a *App) DeleteProfile(id string) (*Settings, error) {
 	return a.settings, nil
 }
 
-// UpdateAdvancedSettings updates the API key, model, and export options
-func (a *App) UpdateAdvancedSettings(apiKey, model string, enableExportSummary bool) (*Settings, error) {
-	if apiKey == "" {
-		return nil, fmt.Errorf("API key cannot be empty")
+// UpdateAdvancedSettings updates the provider, API key/URL, model, and export options
+func (a *App) UpdateAdvancedSettings(provider, credential, model string, enableExportSummary bool) (*Settings, error) {
+	// Validate based on provider
+	if provider == "gemini" && credential == "" {
+		return nil, fmt.Errorf("Gemini API key cannot be empty")
+	}
+	if provider == "ollama" && credential == "" {
+		credential = "http://localhost:11434" // Default Ollama URL
 	}
 
-	a.settings.GeminiAPIKey = apiKey
+	a.settings.Provider = provider
+	if provider == "gemini" {
+		a.settings.GeminiAPIKey = credential
+		// Set environment variable for Gemini
+		_ = os.Setenv("GEMINI_API_KEY", credential)
+	} else if provider == "ollama" {
+		a.settings.OllamaBaseURL = credential
+	}
 	a.settings.Model = model
 	a.settings.EnableExportSummary = enableExportSummary
 
