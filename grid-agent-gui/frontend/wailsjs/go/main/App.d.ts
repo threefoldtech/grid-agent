@@ -10,6 +10,8 @@ export function ActivateProfile(arg1:string):Promise<main.Settings>;
 
 export function AddProfile(arg1:string,arg2:string):Promise<main.Settings>;
 
+export function ApproveToolExecution(arg1:string):Promise<void>;
+
 export function CheckForUpdates():Promise<main.UpdateInfo>;
 
 export function CheckTfcmdVersion():Promise<main.VersionMismatchInfo>;
@@ -22,11 +24,17 @@ export function ExportChat(arg1:string,arg2:string):Promise<void>;
 
 export function GenerateSummary(arg1:string):Promise<string>;
 
+export function GetAvailableTools():Promise<Array<main.ToolInfo>>;
+
 export function GetSettings():Promise<main.Settings>;
 
 export function GetVersion():Promise<string>;
 
 export function Logout():Promise<void>;
+
+export function RejectToolExecution(arg1:string):Promise<void>;
+
+export function RequestToolApproval(arg1:string):Promise<boolean>;
 
 export function SaveSettings(arg1:string,arg2:string,arg3:string):Promise<void>;
 
@@ -39,3 +47,5 @@ export function UpdateAdvancedSettings(arg1:string,arg2:string,arg3:boolean):Pro
 export function UpdateGridSettings(arg1:string,arg2:string):Promise<main.Settings>;
 
 export function UpdateProfile(arg1:string,arg2:string,arg3:string):Promise<main.Settings>;
+
+export function UpdateSafetySettings(arg1:boolean,arg2:Record<string, boolean>):Promise<main.Settings>;

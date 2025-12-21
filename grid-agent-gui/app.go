@@ -31,25 +31,29 @@ var Version = "dev"
 
 // App struct
 type App struct {
-	ctx             context.Context
-	agent           *core.Agent
-	settings        *Settings
-	activeWorkflows map[string]context.CancelFunc
-	workflowsMutex  sync.RWMutex
+	ctx              context.Context
+	agent            *core.Agent
+	settings         *Settings
+	activeWorkflows  map[string]context.CancelFunc
+	workflowsMutex   sync.RWMutex
+	pendingApprovals map[string]chan bool // Tool approval channels keyed by toolCallID
+	approvalsMutex   sync.RWMutex
 }
 
 // Settings holds user configuration
 type Settings struct {
-	Mnemonics              string    `json:"mnemonics"`
-	Network                string    `json:"network"` // mainnet, testnet, devnet
-	GeminiAPIKey           string    `json:"geminiApiKey"`
-	Model                  string    `json:"model"`
-	Theme                  string    `json:"theme"` // light, dark
-	IsConfigured           bool      `json:"isConfigured"`
-	Profiles               []Profile `json:"profiles"`
-	ActiveProfileID        string    `json:"activeProfileID"`
-	EnableExportSummary    bool      `json:"enableExportSummary"`    // Generate AI summary on export (uses tokens)
-	DisclaimerAcknowledged bool      `json:"disclaimerAcknowledged"` // User has acknowledged beta disclaimer
+	Mnemonics              string          `json:"mnemonics"`
+	Network                string          `json:"network"` // mainnet, testnet, devnet
+	GeminiAPIKey           string          `json:"geminiApiKey"`
+	Model                  string          `json:"model"`
+	Theme                  string          `json:"theme"` // light, dark
+	IsConfigured           bool            `json:"isConfigured"`
+	Profiles               []Profile       `json:"profiles"`
+	ActiveProfileID        string          `json:"activeProfileID"`
+	EnableExportSummary    bool            `json:"enableExportSummary"`    // Generate AI summary on export (uses tokens)
+	DisclaimerAcknowledged bool            `json:"disclaimerAcknowledged"` // User has acknowledged beta disclaimer
+	RequireToolApproval    bool            `json:"requireToolApproval"`    // Master switch for tool approval
+	ToolApprovalOverrides  map[string]bool `json:"toolApprovalOverrides"`  // Per-tool approval overrides
 }
 
 // Profile represents a user personalization profile
@@ -57,6 +61,12 @@ type Profile struct {
 	ID           string `json:"id"`
 	Name         string `json:"name"`
 	Instructions string `json:"instructions"`
+}
+
+// ToolInfo describes an available tool for the UI
+type ToolInfo struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
 // Step types
@@ -98,7 +108,8 @@ func NewApp() *App {
 		settings: &Settings{
 			Theme: "dark",
 		},
-		activeWorkflows: make(map[string]context.CancelFunc),
+		activeWorkflows:  make(map[string]context.CancelFunc),
+		pendingApprovals: make(map[string]chan bool),
 	}
 }
 
@@ -288,6 +299,7 @@ type GUIMessageCollector struct {
 	requestID   string
 	steps       []Step
 	finalAnswer string
+	app         *App // Reference to app for approval checking
 }
 
 func (g *GUIMessageCollector) emitEvent(step Step) {
@@ -298,10 +310,58 @@ func (g *GUIMessageCollector) emitEvent(step Step) {
 }
 
 func (g *GUIMessageCollector) OnToolExecution(toolCallID, toolName, progressText, exportPrefix, displayArgs string, isStreaming bool) {
-	var needsCommandID bool
+	// Check if approval is required for this tool
+	needsApproval := false
+	if g.app != nil && g.app.settings.RequireToolApproval {
+		// Master switch is ON - check per-tool override
+		if override, exists := g.app.settings.ToolApprovalOverrides[toolName]; exists {
+			// Explicit override for this tool
+			needsApproval = override
+		} else {
+			// No override - inherit from master switch (require approval)
+			needsApproval = true
+		}
+	}
 
-	// Set needsCommandID based on whether it's streaming
-	needsCommandID = isStreaming
+	if needsApproval {
+		// Emit pending approval event with all tool info
+		wailsRuntime.EventsEmit(g.ctx, "tool-pending-approval", map[string]interface{}{
+			"requestID":    g.requestID,
+			"toolCallID":   toolCallID,
+			"toolName":     toolName,
+			"progressText": progressText,
+			"displayArgs":  displayArgs,
+		})
+
+		// Wait for approval (this blocks until user approves/rejects)
+		approved := g.app.RequestToolApproval(toolCallID)
+
+		if !approved {
+			// Emit rejection event
+			wailsRuntime.EventsEmit(g.ctx, "tool-rejected", map[string]interface{}{
+				"requestID":  g.requestID,
+				"toolCallID": toolCallID,
+			})
+			// Abort the workflow to prevent tool execution
+			// This cancels the context, stopping the processor
+			g.app.workflowsMutex.Lock()
+			if cancel, exists := g.app.activeWorkflows[g.requestID]; exists {
+				cancel()
+				delete(g.app.activeWorkflows, g.requestID)
+				log.Printf("Tool execution rejected, workflow %s aborted", g.requestID)
+			}
+			g.app.workflowsMutex.Unlock()
+			return // Exit early - don't emit the step
+		} else {
+			// Emit approval event
+			wailsRuntime.EventsEmit(g.ctx, "tool-approved", map[string]interface{}{
+				"requestID":  g.requestID,
+				"toolCallID": toolCallID,
+			})
+		}
+	}
+
+	var needsCommandID = isStreaming
 
 	step := Step{
 		Type:         StepTypeTool,
@@ -455,7 +515,7 @@ func (a *App) SendMessage(message string, requestID string) (*Message, error) {
 		a.workflowsMutex.Unlock()
 	}()
 
-	collector := &GUIMessageCollector{ctx: a.ctx, requestID: requestID}
+	collector := &GUIMessageCollector{ctx: a.ctx, requestID: requestID, app: a}
 	processor := workflow.NewProcessor(a.agent, collector, requestID)
 
 	err := processor.ProcessMessage(ctx, message)
@@ -506,6 +566,60 @@ func (a *App) SetTheme(theme string) error {
 func (a *App) AcknowledgeDisclaimer() error {
 	a.settings.DisclaimerAcknowledged = true
 	return a.saveSettingsToFile()
+}
+
+// RequestToolApproval creates an approval channel and waits for user response
+// Returns true if approved, false if rejected
+// Note: The pending-approval event is already emitted by OnToolExecution
+func (a *App) RequestToolApproval(toolCallID string) bool {
+	if !a.settings.RequireToolApproval {
+		return true // Auto-approve if setting is disabled
+	}
+
+	// Create approval channel
+	approvalChan := make(chan bool, 1)
+
+	a.approvalsMutex.Lock()
+	a.pendingApprovals[toolCallID] = approvalChan
+	a.approvalsMutex.Unlock()
+
+	// Wait for approval or rejection (blocks until user decides)
+	approved := <-approvalChan
+
+	// Clean up
+	a.approvalsMutex.Lock()
+	delete(a.pendingApprovals, toolCallID)
+	a.approvalsMutex.Unlock()
+
+	return approved
+}
+
+// ApproveToolExecution approves a pending tool execution
+func (a *App) ApproveToolExecution(toolCallID string) error {
+	a.approvalsMutex.RLock()
+	approvalChan, exists := a.pendingApprovals[toolCallID]
+	a.approvalsMutex.RUnlock()
+
+	if !exists {
+		return fmt.Errorf("no pending approval for tool call %s", toolCallID)
+	}
+
+	approvalChan <- true
+	return nil
+}
+
+// RejectToolExecution rejects a pending tool execution
+func (a *App) RejectToolExecution(toolCallID string) error {
+	a.approvalsMutex.RLock()
+	approvalChan, exists := a.pendingApprovals[toolCallID]
+	a.approvalsMutex.RUnlock()
+
+	if !exists {
+		return fmt.Errorf("no pending approval for tool call %s", toolCallID)
+	}
+
+	approvalChan <- false
+	return nil
 }
 
 // Helper functions
@@ -840,6 +954,44 @@ func (a *App) UpdateAdvancedSettings(apiKey, model string, enableExportSummary b
 	if err := a.initializeAgent(AgentInitOptions{}); err != nil {
 		log.Printf("Failed to re-initialize agent after settings update: %v", err)
 		// We return the settings anyway as they are saved
+	}
+
+	return a.settings, nil
+}
+
+// GetAvailableTools returns a list of all available tools for the UI
+func (a *App) GetAvailableTools() []ToolInfo {
+	var tools []ToolInfo
+
+	if a.agent == nil {
+		// Return default tools if agent not yet initialized
+		tools = []ToolInfo{
+			{Name: "command", Description: "Execute shell commands"},
+			{Name: "fetch_url", Description: "Fetch content from URLs"},
+			{Name: "tfcmd", Description: "Execute TFGrid CLI commands"},
+		}
+	} else {
+		// Get tools from the agent registry
+		registry := a.agent.GetToolRegistry()
+		for _, tool := range registry.List() {
+			desc := tool.Description()
+			tools = append(tools, ToolInfo{
+				Name:        tool.Name(),
+				Description: desc.Description,
+			})
+		}
+	}
+
+	return tools
+}
+
+// UpdateSafetySettings updates the tool approval configuration
+func (a *App) UpdateSafetySettings(requireApproval bool, overrides map[string]bool) (*Settings, error) {
+	a.settings.RequireToolApproval = requireApproval
+	a.settings.ToolApprovalOverrides = overrides
+
+	if err := a.saveSettingsToFile(); err != nil {
+		return nil, err
 	}
 
 	return a.settings, nil

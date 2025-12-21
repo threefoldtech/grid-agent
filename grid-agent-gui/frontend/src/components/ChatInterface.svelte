@@ -6,6 +6,8 @@
     AbortWorkflow,
     CheckForUpdates,
     CheckTfcmdVersion,
+    ApproveToolExecution,
+    RejectToolExecution,
   } from "../../wailsjs/go/main/App.js";
   import { EventsOn, BrowserOpenURL } from "../../wailsjs/runtime/runtime.js";
   import {
@@ -36,6 +38,14 @@
   let isExporting = false;
   let isAborting = false;
 
+  // Tool approval state
+  let pendingApproval: {
+    toolCallID: string;
+    toolName: string;
+    displayArgs: string;
+  } | null = null;
+  let isApproving = false;
+
   // Update notification state
   let showUpdateBanner = false;
   let updateInfo: { latestVersion: string; releaseURL: string } | null = null;
@@ -62,6 +72,36 @@
     isOpeningMismatchLink = true;
     BrowserOpenURL(versionMismatchInfo.releaseURL);
     setTimeout(() => (isOpeningMismatchLink = false), 2000);
+  }
+
+  async function handleApprove() {
+    if (!pendingApproval || isApproving) return;
+    isApproving = true;
+    try {
+      await ApproveToolExecution(pendingApproval.toolCallID);
+      pendingApproval = null;
+    } catch (error) {
+      console.error("Failed to approve tool:", error);
+      errorMessage = "Failed to approve tool: " + error;
+      showErrorModal = true;
+    } finally {
+      isApproving = false;
+    }
+  }
+
+  async function handleReject() {
+    if (!pendingApproval || isApproving) return;
+    isApproving = true;
+    try {
+      await RejectToolExecution(pendingApproval.toolCallID);
+      pendingApproval = null;
+    } catch (error) {
+      console.error("Failed to reject tool:", error);
+      errorMessage = "Failed to reject tool: " + error;
+      showErrorModal = true;
+    } finally {
+      isApproving = false;
+    }
   }
 
   // Active Persona Logic
@@ -352,6 +392,31 @@
       .catch((err) => {
         console.log("Failed to check tfcmd version:", err);
       });
+
+    // Listen for tool pending approval events
+    EventsOn("tool-pending-approval", (data: {
+      requestID: string;
+      toolCallID: string;
+      toolName: string;
+      displayArgs: string;
+    }) => {
+      console.log("[DEBUG] Tool pending approval:", data);
+      pendingApproval = {
+        toolCallID: data.toolCallID,
+        toolName: data.toolName,
+        displayArgs: data.displayArgs,
+      };
+    });
+
+    // Listen for tool approved events (clear modal)
+    EventsOn("tool-approved", () => {
+      pendingApproval = null;
+    });
+
+    // Listen for tool rejected events (clear modal)
+    EventsOn("tool-rejected", () => {
+      pendingApproval = null;
+    });
 
     // Listen for real-time command output
     EventsOn(
@@ -805,6 +870,29 @@
   </div>
 {/if}
 
+<!-- Tool Approval Modal -->
+{#if pendingApproval}
+  <div class="modal-overlay" transition:fade>
+    <div class="modal approval-modal" on:click|stopPropagation transition:fade>
+      <div class="approval-icon">🔧</div>
+      <h2>Tool Approval Required</h2>
+      <p class="tool-name"><strong>{pendingApproval.toolName}</strong></p>
+      <div class="tool-args">
+        <pre>{pendingApproval.displayArgs}</pre>
+      </div>
+      <p class="approval-hint">Do you want to allow this tool to run?</p>
+      <div class="modal-actions">
+        <button class="btn danger" on:click={handleReject} disabled={isApproving}>
+          {isApproving ? "..." : "Reject"}
+        </button>
+        <button class="btn primary" on:click={handleApprove} disabled={isApproving}>
+          {isApproving ? "..." : "Approve"}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
 <Settings show={showSettings} on:close={() => (showSettings = false)} />
 <Docs show={showDocs} on:close={() => (showDocs = false)} />
 
@@ -1201,6 +1289,46 @@
   .error-icon {
     font-size: 3rem;
     margin-bottom: 1rem;
+  }
+
+  /* Approval Modal */
+  .approval-modal {
+    text-align: center;
+    max-width: 500px;
+  }
+
+  .approval-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+
+  .tool-name {
+    font-size: 1.1rem;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+
+  .tool-args {
+    background: var(--bg-tertiary);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    margin: 1rem 0;
+    max-height: 200px;
+    overflow-y: auto;
+    text-align: left;
+  }
+
+  .tool-args pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+
+  .approval-hint {
+    color: var(--text-secondary);
+    margin: 1rem 0;
   }
 
   .logo span {

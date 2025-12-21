@@ -18,6 +18,10 @@ export function AddProfile(arg1, arg2) {
   return window['go']['main']['App']['AddProfile'](arg1, arg2);
 }
 
+export function ApproveToolExecution(arg1) {
+  return window['go']['main']['App']['ApproveToolExecution'](arg1);
+}
+
 export function CheckForUpdates() {
   return window['go']['main']['App']['CheckForUpdates']();
 }
@@ -42,6 +46,10 @@ export function GenerateSummary(arg1) {
   return window['go']['main']['App']['GenerateSummary'](arg1);
 }
 
+export function GetAvailableTools() {
+  return window['go']['main']['App']['GetAvailableTools']();
+}
+
 export function GetSettings() {
   return window['go']['main']['App']['GetSettings']();
 }
@@ -52,6 +60,14 @@ export function GetVersion() {
 
 export function Logout() {
   return window['go']['main']['App']['Logout']();
+}
+
+export function RejectToolExecution(arg1) {
+  return window['go']['main']['App']['RejectToolExecution'](arg1);
+}
+
+export function RequestToolApproval(arg1) {
+  return window['go']['main']['App']['RequestToolApproval'](arg1);
 }
 
 export function SaveSettings(arg1, arg2, arg3) {
@@ -76,4 +92,8 @@ export function UpdateGridSettings(arg1, arg2) {
 
 export function UpdateProfile(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateProfile'](arg1, arg2, arg3);
+}
+
+export function UpdateSafetySettings(arg1, arg2) {
+  return window['go']['main']['App']['UpdateSafetySettings'](arg1, arg2);
 }

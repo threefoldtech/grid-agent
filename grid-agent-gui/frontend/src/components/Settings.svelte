@@ -9,6 +9,8 @@
     UpdateAdvancedSettings,
     UpdateGridSettings,
     GetVersion,
+    GetAvailableTools,
+    UpdateSafetySettings,
   } from "../../wailsjs/go/main/App.js";
   import {
     settingsStore,
@@ -100,6 +102,17 @@
         originalMnemonics = gridMnemonics;
         originalNetwork = gridNetwork;
 
+        // Load safety settings
+        requireToolApproval = $settingsStore.requireToolApproval || false;
+        toolApprovalOverrides = { ...($settingsStore.toolApprovalOverrides || {}) };
+
+        // Load available tools
+        GetAvailableTools().then((tools) => {
+          availableTools = tools;
+        }).catch((err) => {
+          console.error("Failed to load available tools:", err);
+        });
+
         // Load version
         GetVersion().then(v => appVersion = v);
       }
@@ -110,6 +123,11 @@
   // Detect if config has changed
   let enableExportSummary = false;
   let originalEnableExportSummary = false;
+
+  // Safety settings (moved to separate section)
+  let requireToolApproval = false;
+  let toolApprovalOverrides: Record<string, boolean> = {};
+  let availableTools: Array<{ name: string; description: string }> = [];
 
   $: configHasChanged =
     (advancedApiKey !== originalApiKey ||
@@ -274,6 +292,27 @@
     }
   }
 
+  // Safety Settings Functions
+  async function saveSafetySettings() {
+    try {
+      const newSettings = await UpdateSafetySettings(
+        requireToolApproval,
+        toolApprovalOverrides,
+      );
+      settingsStore.set(newSettings);
+      error = "";
+    } catch (e: any) {
+      error = e.message || String(e);
+    }
+  }
+
+  function toggleToolApproval(toolName: string) {
+    // If override doesn't exist, default to the opposite of master switch
+    const currentValue = toolApprovalOverrides[toolName] ?? requireToolApproval;
+    toolApprovalOverrides[toolName] = !currentValue;
+    toolApprovalOverrides = { ...toolApprovalOverrides }; // Trigger reactivity
+  }
+
   // Grid Configuration Functions
   function formatMnemonic(mnemonic: string): string {
     if (!mnemonic) return "";
@@ -418,6 +457,27 @@
               <rect x="3" y="14" width="7" height="7" />
             </svg>
             <span>Grid Configuration</span>
+          </button>
+
+          <button
+            class="nav-item"
+            class:active={activeSection === "safety"}
+            on:click={() => switchSection("safety")}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            <span>Safety</span>
           </button>
         </nav>
 
@@ -899,6 +959,67 @@
                   disabled={!gridConfigHasChanged}>Save Configuration</button
                 >
               </div>
+            </div>
+          </div>
+        {/if}
+
+        <!-- Safety Section -->
+        {#if activeSection === "safety"}
+          <div class="section-content">
+            <div class="section-header">
+              <h3>Safety Settings</h3>
+              <p>Configure tool execution approval requirements</p>
+            </div>
+
+            <div class="config-form">
+              <!-- Master Toggle - Integrated List Item -->
+              <div class="setting-item master-control">
+                <div class="setting-info">
+                  <h4>Require Approval</h4>
+                  <p>When enabled, you'll be prompted to approve or reject all tool calls before they run.</p>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" bind:checked={requireToolApproval} on:change={saveSafetySettings} />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+
+              <!-- Per-Tool Settings - Clean List -->
+              {#if requireToolApproval}
+                <div class="tool-settings-list" transition:slide>
+                  <h4 class="subsection-title">Per-Tool Overrides</h4>
+                  
+                  {#if availableTools.length === 0}
+                    <div class="empty-state">
+                      <p>Loading available tools...</p>
+                    </div>
+                  {:else}
+                    <div class="flat-tool-list">
+                      {#each availableTools as tool}
+                        <div class="tool-row">
+                          <label class="toggle-switch small">
+                            <input 
+                              type="checkbox" 
+                              checked={toolApprovalOverrides[tool.name] ?? true}
+                              on:change={() => { toggleToolApproval(tool.name); saveSafetySettings(); }}
+                            />
+                            <span class="toggle-slider"></span>
+                          </label>
+                          <div class="tool-content">
+                            <div class="tool-top">
+                              <span class="tool-name">{tool.name}</span>
+                              {#if !(toolApprovalOverrides[tool.name] ?? true)}
+                                <span class="status-badge auto">Auto-Run</span>
+                              {/if}
+                            </div>
+                            <span class="tool-desc">{tool.description}</span>
+                          </div>
+                        </div>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+              {/if}
             </div>
           </div>
         {/if}
@@ -1472,6 +1593,7 @@
     font-size: 0.875rem;
     color: var(--text-secondary);
     margin-top: 0.5rem;
+    text-align: left;
   }
 
   .form-actions {
@@ -1700,6 +1822,218 @@
     font-size: 0.9rem;
     color: var(--text-primary);
     font-weight: 500;
+  }
+
+  /* Simplified Layout Styles */
+  .setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .setting-info h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .setting-info p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    max-width: 90%;
+    text-align: left;
+  }
+
+  /* Flat Tool List Styles */
+  .tool-settings-list {
+    margin-top: 1.5rem;
+  }
+
+  .subsection-title {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    margin: 0 0 1rem 0;
+    font-weight: 600;
+  }
+
+  .flat-tool-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .tool-row {
+    display: flex;
+    align-items: flex-start;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+    gap: 1rem;
+  }
+
+  /* Remove border from last item */
+  .tool-row:last-child {
+    border-bottom: none;
+  }
+
+  .tool-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .tool-top {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .tool-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    font-size: 0.9rem;
+  }
+
+  .status-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+
+  .status-badge.auto {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+  }
+
+  .tool-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    text-align: left;
+  }
+
+  /* Toggle Switch Sizing */
+  .toggle-switch.small {
+    transform: scale(0.9);
+    transform-origin: top left;
+    margin-top: 2px;
+  }
+
+  /* Toggle Switch Adjustments */
+  .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+
+  .toggle-switch.large {
+    width: 52px;
+    height: 28px;
+  }
+
+  .toggle-switch.large .toggle-slider {
+    border-radius: 28px;
+  }
+  
+  .toggle-switch.large .toggle-slider::before {
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    bottom: 3px;
+  }
+
+  .toggle-switch.large input:checked + .toggle-slider::before {
+    transform: translateX(24px);
+  }
+
+  /* Slider Base Styles */
+  .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--border); /* Default off state */
+    transition: 0.3s;
+    border-radius: 24px;
+  }
+
+  .toggle-slider::before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  }
+
+  .toggle-switch input:checked + .toggle-slider {
+    background-color: var(--accent);
+  }
+
+  .toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(20px);
+  }
+
+
+  .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--border);
+    transition: 0.3s;
+    border-radius: 24px;
+  }
+
+  .toggle-slider::before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+  }
+
+  .toggle-switch input:checked + .toggle-slider {
+    background-color: var(--accent);
+  }
+
+  .toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(20px);
   }
 
   /* Sidebar Footer - Version Display */

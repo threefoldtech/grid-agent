@@ -95,6 +95,8 @@ export namespace main {
 	    activeProfileID: string;
 	    enableExportSummary: boolean;
 	    disclaimerAcknowledged: boolean;
+	    requireToolApproval: boolean;
+	    toolApprovalOverrides: Record<string, boolean>;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -112,6 +114,8 @@ export namespace main {
 	        this.activeProfileID = source["activeProfileID"];
 	        this.enableExportSummary = source["enableExportSummary"];
 	        this.disclaimerAcknowledged = source["disclaimerAcknowledged"];
+	        this.requireToolApproval = source["requireToolApproval"];
+	        this.toolApprovalOverrides = source["toolApprovalOverrides"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -133,6 +137,20 @@ export namespace main {
 		}
 	}
 	
+	export class ToolInfo {
+	    name: string;
+	    description: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ToolInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.description = source["description"];
+	    }
+	}
 	export class UpdateInfo {
 	    updateAvailable: boolean;
 	    currentVersion: string;

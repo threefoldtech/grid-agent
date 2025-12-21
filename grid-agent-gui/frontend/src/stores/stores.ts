@@ -18,6 +18,8 @@ export interface Settings {
     activeProfileID: string;
     enableExportSummary: boolean;
     disclaimerAcknowledged: boolean;
+    requireToolApproval: boolean;
+    toolApprovalOverrides: Record<string, boolean>;
 }
 
 export const themeStore = writable('dark');
@@ -31,7 +33,9 @@ export const settingsStore = writable<Settings>({
     profiles: [],
     activeProfileID: '',
     enableExportSummary: false,
-    disclaimerAcknowledged: false
+    disclaimerAcknowledged: false,
+    requireToolApproval: false,
+    toolApprovalOverrides: {}
 });
 export const messagesStore = writable([]);
 
