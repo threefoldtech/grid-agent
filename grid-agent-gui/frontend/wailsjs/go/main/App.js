@@ -78,8 +78,20 @@ export function SendMessage(arg1, arg2) {
   return window['go']['main']['App']['SendMessage'](arg1, arg2);
 }
 
+export function SetSafetyMode(arg1) {
+  return window['go']['main']['App']['SetSafetyMode'](arg1);
+}
+
+export function SetSmartSafetyThreshold(arg1) {
+  return window['go']['main']['App']['SetSmartSafetyThreshold'](arg1);
+}
+
 export function SetTheme(arg1) {
   return window['go']['main']['App']['SetTheme'](arg1);
+}
+
+export function ToggleToolOverride(arg1) {
+  return window['go']['main']['App']['ToggleToolOverride'](arg1);
 }
 
 export function UpdateAdvancedSettings(arg1, arg2, arg3) {
@@ -92,8 +104,4 @@ export function UpdateGridSettings(arg1, arg2) {
 
 export function UpdateProfile(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateProfile'](arg1, arg2, arg3);
-}
-
-export function UpdateSafetySettings(arg1, arg2) {
-  return window['go']['main']['App']['UpdateSafetySettings'](arg1, arg2);
 }

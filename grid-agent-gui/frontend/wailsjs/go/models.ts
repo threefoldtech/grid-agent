@@ -97,6 +97,8 @@ export namespace main {
 	    disclaimerAcknowledged: boolean;
 	    requireToolApproval: boolean;
 	    toolApprovalOverrides: Record<string, boolean>;
+	    safetyMode: string;
+	    smartSafetyThreshold: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -116,6 +118,8 @@ export namespace main {
 	        this.disclaimerAcknowledged = source["disclaimerAcknowledged"];
 	        this.requireToolApproval = source["requireToolApproval"];
 	        this.toolApprovalOverrides = source["toolApprovalOverrides"];
+	        this.safetyMode = source["safetyMode"];
+	        this.smartSafetyThreshold = source["smartSafetyThreshold"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

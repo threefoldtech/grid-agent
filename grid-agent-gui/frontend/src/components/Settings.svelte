@@ -10,7 +10,9 @@
     UpdateGridSettings,
     GetVersion,
     GetAvailableTools,
-    UpdateSafetySettings,
+    SetSafetyMode,
+    SetSmartSafetyThreshold,
+    ToggleToolOverride,
   } from "../../wailsjs/go/main/App.js";
   import {
     settingsStore,
@@ -38,6 +40,7 @@
   let isEditingApiKey = false;
   let tempApiKey = "";
   let modelDropdownOpen = false;
+  let safetyModeDropdownOpen = false;
   let showApiKey = false;
 
   // Track original values for change detection
@@ -103,15 +106,15 @@
         originalNetwork = gridNetwork;
 
         // Load safety settings
+        safetyMode = $settingsStore.safetyMode || "manual";
+        smartSafetyThreshold = $settingsStore.smartSafetyThreshold || "high";
         requireToolApproval = $settingsStore.requireToolApproval || false;
         toolApprovalOverrides = { ...($settingsStore.toolApprovalOverrides || {}) };
 
         // Load available tools
-        GetAvailableTools().then((tools) => {
-          availableTools = tools;
-        }).catch((err) => {
-          console.error("Failed to load available tools:", err);
-        });
+        if (!toolsLoaded) {
+           loadTools();
+        }
 
         // Load version
         GetVersion().then(v => appVersion = v);
@@ -125,9 +128,13 @@
   let originalEnableExportSummary = false;
 
   // Safety settings (moved to separate section)
+  let safetyMode = "manual";
+  let smartSafetyThreshold = "high";
   let requireToolApproval = false;
   let toolApprovalOverrides: Record<string, boolean> = {};
   let availableTools: Array<{ name: string; description: string }> = [];
+  let toolsLoaded = false;
+  let isLoadingTools = false;
 
   $: configHasChanged =
     (advancedApiKey !== originalApiKey ||
@@ -160,9 +167,26 @@
     error = "";
     modelDropdownOpen = false;
     cancelEdit();
+    if (section === "safety" && !toolsLoaded && !isLoadingTools) {
+      loadTools();
+    }
   }
 
-  // Close dropdown when clicking outside
+  function loadTools() {
+    isLoadingTools = true;
+    GetAvailableTools().then((tools) => {
+      availableTools = tools || [];
+      toolsLoaded = true;
+    }).catch((err) => {
+      console.error("Failed to load available tools:", err);
+      availableTools = []; // Ensure array
+    }).finally(() => {
+      isLoadingTools = false;
+    });
+  }
+
+
+    // Close dropdown fetching when clicking outside
   function handleDropdownClickOutside(event: MouseEvent) {
     if (modelDropdownOpen) {
       const target = event.target as HTMLElement;
@@ -292,13 +316,12 @@
     }
   }
 
-  // Safety Settings Functions
-  async function saveSafetySettings() {
+
+
+  // Action Handlers
+  async function handleSafetyModeChange() {
     try {
-      const newSettings = await UpdateSafetySettings(
-        requireToolApproval,
-        toolApprovalOverrides,
-      );
+      const newSettings = await SetSafetyMode(safetyMode);
       settingsStore.set(newSettings);
       error = "";
     } catch (e: any) {
@@ -306,11 +329,25 @@
     }
   }
 
-  function toggleToolApproval(toolName: string) {
-    // If override doesn't exist, default to the opposite of master switch
-    const currentValue = toolApprovalOverrides[toolName] ?? requireToolApproval;
-    toolApprovalOverrides[toolName] = !currentValue;
-    toolApprovalOverrides = { ...toolApprovalOverrides }; // Trigger reactivity
+  async function handleThresholdChange(newThreshold: string) {
+    try {
+      smartSafetyThreshold = newThreshold;
+      const newSettings = await SetSmartSafetyThreshold(newThreshold);
+      settingsStore.set(newSettings);
+      error = "";
+    } catch (e: any) {
+      error = e.message || String(e);
+    }
+  }
+
+  async function handleToggleOverride(toolName: string) {
+    try {
+      const newSettings = await ToggleToolOverride(toolName);
+      settingsStore.set(newSettings);
+      error = "";
+    } catch (e: any) {
+      error = e.message || String(e);
+    }
   }
 
   // Grid Configuration Functions
@@ -972,54 +1009,130 @@
             </div>
 
             <div class="config-form">
-              <!-- Master Toggle - Integrated List Item -->
-              <div class="setting-item master-control">
+              <!-- Safety Mode Selector -->
+              <div class="setting-item">
                 <div class="setting-info">
-                  <h4>Require Approval</h4>
-                  <p>When enabled, you'll be prompted to approve or reject all tool calls before they run.</p>
+                  <h4>Safety Mode</h4>
+                  <p>Choose how tool execution approvals are handled.</p>
                 </div>
-                <label class="toggle-switch">
-                  <input type="checkbox" bind:checked={requireToolApproval} on:change={saveSafetySettings} />
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-
-              <!-- Per-Tool Settings - Clean List -->
-              {#if requireToolApproval}
-                <div class="tool-settings-list" transition:slide>
-                  <h4 class="subsection-title">Per-Tool Overrides</h4>
+                <div class="custom-select" class:open={safetyModeDropdownOpen}>
+                  <button 
+                    class="select-trigger" 
+                    on:click|stopPropagation={() => safetyModeDropdownOpen = !safetyModeDropdownOpen}
+                  >
+                    <span>
+                      {#if safetyMode === 'manual'}
+                        Manual Control (Secure)
+                      {:else if safetyMode === 'smart'}
+                        Smart Guard (AI)
+                      {:else if safetyMode === 'turbo'}
+                        Turbo Mode (Auto)
+                      {/if}
+                    </span>
+                    <svg
+                      class="select-arrow"
+                      class:rotated={safetyModeDropdownOpen}
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path d="M6 9l6 6 6-6"></path>
+                    </svg>
+                  </button>
                   
-                  {#if availableTools.length === 0}
-                    <div class="empty-state">
-                      <p>Loading available tools...</p>
-                    </div>
-                  {:else}
-                    <div class="flat-tool-list">
-                      {#each availableTools as tool}
-                        <div class="tool-row">
-                          <label class="toggle-switch small">
-                            <input 
-                              type="checkbox" 
-                              checked={toolApprovalOverrides[tool.name] ?? true}
-                              on:change={() => { toggleToolApproval(tool.name); saveSafetySettings(); }}
-                            />
-                            <span class="toggle-slider"></span>
-                          </label>
-                          <div class="tool-content">
-                            <div class="tool-top">
-                              <span class="tool-name">{tool.name}</span>
-                              {#if !(toolApprovalOverrides[tool.name] ?? true)}
-                                <span class="status-badge auto">Auto-Run</span>
-                              {/if}
-                            </div>
-                            <span class="tool-desc">{tool.description}</span>
-                          </div>
-                        </div>
-                      {/each}
+                  {#if safetyModeDropdownOpen}
+                    <div class="select-dropdown" transition:slide={{ duration: 150 }}>
+                      <button 
+                        class="select-option" 
+                        class:selected={safetyMode === 'manual'}
+                        on:click={() => { safetyMode = 'manual'; handleSafetyModeChange(); safetyModeDropdownOpen = false; }}
+                      >
+                        Manual Control (Secure)
+                      </button>
+                      <button 
+                        class="select-option" 
+                        class:selected={safetyMode === 'smart'}
+                        on:click={() => { safetyMode = 'smart'; handleSafetyModeChange(); safetyModeDropdownOpen = false; }}
+                      >
+                        Smart Guard (AI)
+                      </button>
+                      <button 
+                        class="select-option" 
+                        class:selected={safetyMode === 'turbo'}
+                        on:click={() => { safetyMode = 'turbo'; handleSafetyModeChange(); safetyModeDropdownOpen = false; }}
+                      >
+                        Turbo Mode (Auto)
+                      </button>
                     </div>
                   {/if}
                 </div>
+              </div>
+
+            <!-- Conditional UI based on Mode -->
+            {#if safetyMode === 'smart'}
+              <div class="setting-item">
+                <div class="setting-info">
+                  <h4>Sensitivity Threshold</h4>
+                  <p>Determine how strict the Smart Guard should be.</p>
+                </div>
+                <div class="segment-control">
+                  <button
+                    class="segment-btn"
+                    class:active={smartSafetyThreshold === 'high'}
+                    on:click={() => handleThresholdChange('high')}>
+                    Strict
+                  </button>
+                  <button
+                    class="segment-btn"
+                    class:active={smartSafetyThreshold === 'medium'}
+                    on:click={() => handleThresholdChange('medium')}>
+                    Relaxed
+                  </button>
+                </div>
+              </div>
+            {/if}
+
+            {#if safetyMode === 'manual'}
+              <div class="tools-list">
+                {#if isLoadingTools}
+                   <div class="loading-tools">Loading tools...</div>
+                {:else if availableTools.length === 0}
+                  <div class="empty-state">No tools available.</div>
+                {:else}
+                  {#each availableTools as tool}
+                    <div class="tool-item">
+                      <div class="tool-info">
+                        <span class="tool-name">{tool.name}</span>
+                        <span class="tool-desc">{tool.description}</span>
+                      </div>
+                      <div class="segment-control small">
+                        <button
+                          class="segment-btn"
+                          class:active={toolApprovalOverrides[tool.name] === false}
+                          on:click={() => { if (toolApprovalOverrides[tool.name] !== false) handleToggleOverride(tool.name); }}>
+                          Auto
+                        </button>
+                        <button
+                          class="segment-btn"
+                          class:active={toolApprovalOverrides[tool.name] !== false}
+                          on:click={() => { if (toolApprovalOverrides[tool.name] === false) handleToggleOverride(tool.name); }}>
+                          Manual
+                        </button>
+                      </div>
+
+                    </div>
+                    {/each}
+                  {/if}
+                </div>
               {/if}
+
+
+
+
+
             </div>
           </div>
         {/if}
@@ -1596,6 +1709,60 @@
     text-align: left;
   }
 
+  /* Segment Control */
+  .segment-control {
+    display: inline-flex;
+    background: var(--bg-tertiary);
+    padding: 0.25rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+  }
+
+  .segment-control.small {
+    padding: 0.15rem;
+  }
+
+  .segment-control.small .segment-btn {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .segment-btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all 0.2s;
+  }
+
+  .segment-btn:hover {
+    color: var(--text-primary);
+  }
+
+  .segment-btn.active {
+    background: var(--bg-secondary);
+    color: var(--accent);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+
+  /* Safety Modes */
+  .turbo-warning {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: var(--radius-md);
+    color: #ef4444;
+    font-size: 0.875rem;
+    align-items: flex-start;
+    text-align: left;
+  }
+
   .form-actions {
     display: flex;
     align-items: center;
@@ -1847,6 +2014,40 @@
     line-height: 1.5;
     max-width: 90%;
     text-align: left;
+  }
+
+  /* Manual Mode Tool List Styles */
+  .tool-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border);
+    gap: 1.5rem;
+  }
+
+  .tool-item:last-child {
+    border-bottom: none;
+  }
+
+  .tool-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    text-align: left;
+  }
+
+  .tool-info .tool-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+  }
+
+  .tool-info .tool-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
   }
 
   /* Flat Tool List Styles */

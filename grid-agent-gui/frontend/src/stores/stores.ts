@@ -18,8 +18,10 @@ export interface Settings {
     activeProfileID: string;
     enableExportSummary: boolean;
     disclaimerAcknowledged: boolean;
-    requireToolApproval: boolean;
+    requireToolApproval: boolean; // Deprecated
     toolApprovalOverrides: Record<string, boolean>;
+    safetyMode: string;
+    smartSafetyThreshold: string;
 }
 
 export const themeStore = writable('dark');
@@ -35,7 +37,9 @@ export const settingsStore = writable<Settings>({
     enableExportSummary: false,
     disclaimerAcknowledged: false,
     requireToolApproval: false,
-    toolApprovalOverrides: {}
+    toolApprovalOverrides: {},
+    safetyMode: 'manual',
+    smartSafetyThreshold: 'high'
 });
 export const messagesStore = writable([]);
 

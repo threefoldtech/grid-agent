@@ -58,9 +58,17 @@ func (t *CommandTool) Description() tools.ToolDescriptor {
 		CallFormat: `{
   "toolName": "command",
   "arguments": ["ls", "-la", "/tmp"],
-  "explanation": "explain why you need to use this command"
+  "explanation": "explain why you need to use this command",
+  "risk_level": "low|medium|high"
 }`,
 		Instructions: `Use this tool to execute system commands. Arguments must be a list of strings.
+
+RISK ASSESSMENT -- CRITICAL:
+You must include a "risk_level" field in your JSON response:
+- "low": Read-only, safe commands (ls, cat, pwd, echo, grep, whoami).
+- "medium": Read-only sensitive data OR write operations that create new resources but are non-destructive (mkdir, touch, cp).
+- "high": Destructive operations or significant state mutations (rm, mv, chmod, sudo, apt/yum install, systemctl).
+If uncertain, default to "high".
 
 OS AWARENESS:
 - Always use commands appropriate for the current operating system

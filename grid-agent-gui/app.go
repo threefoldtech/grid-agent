@@ -52,8 +52,10 @@ type Settings struct {
 	ActiveProfileID        string          `json:"activeProfileID"`
 	EnableExportSummary    bool            `json:"enableExportSummary"`    // Generate AI summary on export (uses tokens)
 	DisclaimerAcknowledged bool            `json:"disclaimerAcknowledged"` // User has acknowledged beta disclaimer
-	RequireToolApproval    bool            `json:"requireToolApproval"`    // Master switch for tool approval
+	RequireToolApproval    bool            `json:"requireToolApproval"`    // Deprecated: Migrated to SafetyMode
 	ToolApprovalOverrides  map[string]bool `json:"toolApprovalOverrides"`  // Per-tool approval overrides
+	SafetyMode             string          `json:"safetyMode"`             // "manual", "smart", "turbo"
+	SmartSafetyThreshold   string          `json:"smartSafetyThreshold"`   // "medium", "high"
 }
 
 // Profile represents a user personalization profile
@@ -309,16 +311,59 @@ func (g *GUIMessageCollector) emitEvent(step Step) {
 	})
 }
 
-func (g *GUIMessageCollector) OnToolExecution(toolCallID, toolName, progressText, exportPrefix, displayArgs string, isStreaming bool) {
+// OnToolExecution handles the tool execution event from the agent
+func (g *GUIMessageCollector) OnToolExecution(toolCallID, toolName, progressText, exportPrefix, displayArgs, riskLevel string, isStreaming bool) error {
 	// Check if approval is required for this tool
-	needsApproval := false
-	if g.app != nil && g.app.settings.RequireToolApproval {
+	// needsApproval assigned below based on SafetyMode
+	var needsApproval bool
+
+	// Default to manual if not set (backward compatibility)
+	mode := g.app.settings.SafetyMode
+	if mode == "" {
+		if g.app.settings.RequireToolApproval {
+			mode = "manual"
+		} else {
+			mode = "turbo"
+		}
+	}
+
+	switch mode {
+	case "turbo":
+		needsApproval = false
+	case "smart":
+		// Use the riskLevel parsed natively by the LLM layer
+		// Normalizing to lowercase just in case
+		risk := strings.ToLower(strings.TrimSpace(riskLevel))
+
+		log.Printf("[SmartGuard] Tool: %s, Raw Risk: '%s', Parsed: '%s', Threshold: %s", toolName, riskLevel, risk, g.app.settings.SmartSafetyThreshold)
+
+		isHigh := risk == "high"
+		isMedium := risk == "medium"
+		isLow := strings.ToLower(riskLevel) == "low"
+
+		// If risk is undefined or unrecognized, default to HIGH safety
+		if !isHigh && !isMedium && !isLow {
+			isHigh = true
+		}
+
+		threshold := g.app.settings.SmartSafetyThreshold
+		if threshold == "medium" {
+			// Relaxed: Auto-run Low & Medium. Block High.
+			needsApproval = isHigh
+		} else {
+			// Strict (default): Auto-run Low only. Block Medium & High.
+			needsApproval = (isHigh || isMedium)
+		}
+
+	case "manual":
+		fallthrough
+	default:
 		// Master switch is ON - check per-tool override
 		if override, exists := g.app.settings.ToolApprovalOverrides[toolName]; exists {
 			// Explicit override for this tool
 			needsApproval = override
 		} else {
-			// No override - inherit from master switch (require approval)
+			// No override - inherit from master logic (require approval)
 			needsApproval = true
 		}
 	}
@@ -331,6 +376,7 @@ func (g *GUIMessageCollector) OnToolExecution(toolCallID, toolName, progressText
 			"toolName":     toolName,
 			"progressText": progressText,
 			"displayArgs":  displayArgs,
+			"riskLevel":    riskLevel,
 		})
 
 		// Wait for approval (this blocks until user approves/rejects)
@@ -351,7 +397,7 @@ func (g *GUIMessageCollector) OnToolExecution(toolCallID, toolName, progressText
 				log.Printf("Tool execution rejected, workflow %s aborted", g.requestID)
 			}
 			g.app.workflowsMutex.Unlock()
-			return // Exit early - don't emit the step
+			return fmt.Errorf("tool execution rejected by user")
 		} else {
 			// Emit approval event
 			wailsRuntime.EventsEmit(g.ctx, "tool-approved", map[string]interface{}{
@@ -377,6 +423,8 @@ func (g *GUIMessageCollector) OnToolExecution(toolCallID, toolName, progressText
 
 	g.steps = append(g.steps, step)
 	g.emitEvent(step)
+
+	return nil
 }
 
 func (g *GUIMessageCollector) UpdateToolOutput(toolCallID, output string, err error) {
@@ -571,10 +619,14 @@ func (a *App) AcknowledgeDisclaimer() error {
 // RequestToolApproval creates an approval channel and waits for user response
 // Returns true if approved, false if rejected
 // Note: The pending-approval event is already emitted by OnToolExecution
+// RequestToolApproval creates an approval channel and waits for user response
+// Returns true if approved, false if rejected
+// Note: The pending-approval event is already emitted by OnToolExecution
 func (a *App) RequestToolApproval(toolCallID string) bool {
-	if !a.settings.RequireToolApproval {
-		return true // Auto-approve if setting is disabled
-	}
+	// Logic decision is moved to OnToolExecution.
+	// If this is called, it MEANS approval is required.
+	// We do NOT check a.settings.RequireToolApproval here anymore because Smart Mode
+	// might require approval for specific tools even if the global flag is false.
 
 	// Create approval channel
 	approvalChan := make(chan bool, 1)
@@ -985,15 +1037,65 @@ func (a *App) GetAvailableTools() []ToolInfo {
 	return tools
 }
 
-// UpdateSafetySettings updates the tool approval configuration
-func (a *App) UpdateSafetySettings(requireApproval bool, overrides map[string]bool) (*Settings, error) {
-	a.settings.RequireToolApproval = requireApproval
-	a.settings.ToolApprovalOverrides = overrides
+// SetSafetyMode updates the safety mode (manual/smart/turbo)
+func (a *App) SetSafetyMode(mode string) (*Settings, error) {
+	if mode != "manual" && mode != "smart" && mode != "turbo" {
+		return nil, fmt.Errorf("invalid safety mode: %s", mode)
+	}
+
+	a.settings.SafetyMode = mode
+
+	// Backward compatibility mapping
+	if mode == "manual" {
+		a.settings.RequireToolApproval = true
+	} else {
+		// For smart/turbo, master switch is effectively off (controlled by logic)
+		a.settings.RequireToolApproval = false
+	}
 
 	if err := a.saveSettingsToFile(); err != nil {
 		return nil, err
 	}
+	return a.settings, nil
+}
 
+// SetSmartSafetyThreshold updates the risk threshold (medium/high)
+func (a *App) SetSmartSafetyThreshold(threshold string) (*Settings, error) {
+	if threshold != "medium" && threshold != "high" {
+		return nil, fmt.Errorf("invalid threshold. Must be 'medium' or 'high'")
+	}
+
+	a.settings.SmartSafetyThreshold = threshold
+	if err := a.saveSettingsToFile(); err != nil {
+		return nil, err
+	}
+
+	return a.settings, nil
+}
+
+// ToggleToolOverride toggles the approval requirement for a specific tool
+func (a *App) ToggleToolOverride(toolName string) (*Settings, error) {
+	if a.settings.ToolApprovalOverrides == nil {
+		a.settings.ToolApprovalOverrides = make(map[string]bool)
+	}
+
+	// Logic: If key exists, flip it. If not, assume it follows master (which is usually true in manual).
+	// BUT user wants to TOGGLE.
+	// If currently undefined -> assume default is TRUE (require approval) -> so toggle to FALSE (auto)
+	// If currently true -> toggle to false.
+	// If currently false -> toggle to true.
+
+	currentVal := true // Default expectation (require approval)
+	if val, exists := a.settings.ToolApprovalOverrides[toolName]; exists {
+		currentVal = val
+	}
+
+	// Flip it
+	a.settings.ToolApprovalOverrides[toolName] = !currentVal
+
+	if err := a.saveSettingsToFile(); err != nil {
+		return nil, err
+	}
 	return a.settings, nil
 }
 

@@ -18,6 +18,7 @@ type LLMOuterResponse struct {
 	Question    string      `json:"question"`
 	ToolName    string      `json:"toolName"`
 	Arguments   interface{} `json:"arguments"`
+	RiskLevel   string      `json:"risk_level"`
 }
 
 // GeminiProvider implements the Provider interface for Gemini
@@ -335,6 +336,7 @@ func (p *GeminiProvider) parseResponse(resp *genai.GenerateContentResponse) (*Re
 				ToolName:    r.ToolName,
 				Arguments:   arguments,
 				Explanation: r.Explanation,
+				RiskLevel:   r.RiskLevel,
 			}
 
 			genericResp.ToolCalls = append(genericResp.ToolCalls, toolCall)

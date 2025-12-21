@@ -13,7 +13,8 @@ Use this format when you need to execute a tool (action/function):
 {
   "toolName": "<tool_name>",
   "arguments": <string_or_array>,
-  "explanation": "Why this specific tool is needed and its goal."
+  "explanation": "Why this specific tool is needed and its goal.",
+  "risk_level": "low|medium|high"
 }
 
 ### Question Format

@@ -59,9 +59,16 @@ func (t *Tool) Description() tools.ToolDescriptor {
 		CallFormat: `{
   "toolName": "tfcmd",
   "arguments": ["tfcmd", "deploy", "vm", "--name", "myvm"],
-  "explanation": "explain why you need to execute this command"
+  "explanation": "explain why you need to execute this command",
+  "risk_level": "low|medium|high"
 }`,
 		Instructions: fmt.Sprintf(`Execute ThreeFold Grid CLI commands using the provided schema.
+
+RISK ASSESSMENT:
+- HIGH: Deletions, massive deployments (Kubernetes, large VMs), cost-incurring operations.
+- MEDIUM: Standard VM/Gateway deployments, network changes.
+- LOW: Read-only operations (list, get), safe info retrieval.
+
 
 TFCMD SCHEMA:
 %s

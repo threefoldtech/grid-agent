@@ -32,9 +32,16 @@ func (t *URLTool) Description() tools.ToolDescriptor {
 		CallFormat: `{
   "toolName": "fetch_url",
   "arguments": "https://example.com/api/endpoint",
-  "explanation": "explain why you need to fetch this URL"
+  "explanation": "explain why you need to fetch this URL",
+  "risk_level": "low|medium|high"
 }`,
-		Instructions: `Use this tool to fetch content from URLs. The arguments should be a string containing the URL to fetch. This is useful for reading API documentation, GitHub README files, and other web content.`,
+		Instructions: `Use this tool to fetch content from URLs. The arguments should be a string containing the URL to fetch. 
+
+RISK ASSESSMENT:
+- "low": Fetching public documentation, README files, or non-sensitive data.
+- "medium": Fetching internal APIs or potentially sensitive configuration files.
+- "high": Fetching executable content (e.g., install scripts) or communicating with critical control planes.
+Default to "low" for most documentation reading tasks.`,
 		Examples: []string{
 			`{
   "toolName": "fetch_url",

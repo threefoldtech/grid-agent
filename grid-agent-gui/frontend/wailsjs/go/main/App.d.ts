@@ -40,12 +40,16 @@ export function SaveSettings(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function SendMessage(arg1:string,arg2:string):Promise<main.Message>;
 
+export function SetSafetyMode(arg1:string):Promise<main.Settings>;
+
+export function SetSmartSafetyThreshold(arg1:string):Promise<main.Settings>;
+
 export function SetTheme(arg1:string):Promise<void>;
+
+export function ToggleToolOverride(arg1:string):Promise<main.Settings>;
 
 export function UpdateAdvancedSettings(arg1:string,arg2:string,arg3:boolean):Promise<main.Settings>;
 
 export function UpdateGridSettings(arg1:string,arg2:string):Promise<main.Settings>;
 
 export function UpdateProfile(arg1:string,arg2:string,arg3:string):Promise<main.Settings>;
-
-export function UpdateSafetySettings(arg1:boolean,arg2:Record<string, boolean>):Promise<main.Settings>;

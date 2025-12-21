@@ -15,7 +15,7 @@ var commandCounter uint64
 
 // ResponseHandler defines the interface for handling streaming responses
 type ResponseHandler interface {
-	OnToolExecution(toolCallID, toolName, progressText, exportPrefix, displayArgs string, isStreaming bool)
+	OnToolExecution(toolCallID, toolName, progressText, exportPrefix, displayArgs, riskLevel string, isStreaming bool) error
 	OnAnalyzing()
 	OnAnswer(answer string) error
 	OnQuestion(question string) error
@@ -112,7 +112,10 @@ func (p *Processor) processResponseLoop(ctx context.Context, resp *llm.Response)
 				displayArgs := tool.FormatDisplayArgs(toolCall.Arguments)
 
 				// Notify UI about tool execution start using unified handler
-				p.handler.OnToolExecution(toolCallID, toolCall.ToolName, toolDesc.ProgressText, toolDesc.ExportPrefix, displayArgs, isStreaming)
+				if err := p.handler.OnToolExecution(toolCallID, toolCall.ToolName, toolDesc.ProgressText, toolDesc.ExportPrefix, displayArgs, toolCall.RiskLevel, isStreaming); err != nil {
+					// Execution rejected or failed handling
+					return err
+				}
 
 				// Set up context with IDs
 				ctxWithID := context.WithValue(ctx, builtin.RequestIDKey, p.requestID)

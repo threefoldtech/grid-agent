@@ -34,6 +34,7 @@ type ToolCall struct {
 	ToolName    string
 	Arguments   any
 	Explanation string
+	RiskLevel   string
 }
 
 // Message represents a conversation message
