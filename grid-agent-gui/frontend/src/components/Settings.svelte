@@ -1111,14 +1111,14 @@
                       <div class="segment-control small">
                         <button
                           class="segment-btn"
-                          class:active={toolApprovalOverrides[tool.name] === false}
-                          on:click={() => { if (toolApprovalOverrides[tool.name] !== false) handleToggleOverride(tool.name); }}>
+                          class:active={($settingsStore?.toolApprovalOverrides?.[tool.name] === false)}
+                          on:click={() => { if (($settingsStore?.toolApprovalOverrides?.[tool.name] ?? true) !== false) handleToggleOverride(tool.name); }}>
                           Auto
                         </button>
                         <button
                           class="segment-btn"
-                          class:active={toolApprovalOverrides[tool.name] !== false}
-                          on:click={() => { if (toolApprovalOverrides[tool.name] === false) handleToggleOverride(tool.name); }}>
+                          class:active={($settingsStore?.toolApprovalOverrides?.[tool.name] !== false)}
+                          on:click={() => { if (($settingsStore?.toolApprovalOverrides?.[tool.name] ?? true) === false) handleToggleOverride(tool.name); }}>
                           Manual
                         </button>
                       </div>
