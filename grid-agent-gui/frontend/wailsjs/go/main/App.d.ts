@@ -46,13 +46,9 @@ export function SetSmartSafetyThreshold(arg1:string):Promise<main.Settings>;
 
 export function SetTheme(arg1:string):Promise<void>;
 
-<<<<<<< HEAD
 export function ToggleToolOverride(arg1:string):Promise<main.Settings>;
 
-export function UpdateAdvancedSettings(arg1:string,arg2:string,arg3:boolean):Promise<main.Settings>;
-=======
 export function UpdateAdvancedSettings(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<main.Settings>;
->>>>>>> origin/development-ollama
 
 export function UpdateGridSettings(arg1:string,arg2:string):Promise<main.Settings>;
 

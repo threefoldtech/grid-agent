@@ -59,20 +59,6 @@ type Settings struct {
 	SafetyMode             string          `json:"safetyMode"`             // "manual", "smart", "turbo"
 	SmartSafetyThreshold   string          `json:"smartSafetyThreshold"`   // "medium", "high"
 }
-=======
-	Mnemonics           string    `json:"mnemonics"`
-	Network             string    `json:"network"` // mainnet, testnet, devnet
-	Provider            string    `json:"provider"` // "gemini", "ollama"
-	GeminiAPIKey        string    `json:"geminiApiKey"`
-	OllamaBaseURL       string    `json:"ollamaBaseURL"` // usually "http://localhost:11434"
-	Model               string    `json:"model"`
-	Theme               string    `json:"theme"` // light, dark
-	IsConfigured        bool      `json:"isConfigured"`
-	Profiles            []Profile `json:"profiles"`
-	ActiveProfileID     string    `json:"activeProfileID"`
-	EnableExportSummary bool      `json:"enableExportSummary"` // Generate AI summary on export (uses tokens)
->>>>>>> origin/development-ollama
-}
 
 // Profile represents a user personalization profile
 type Profile struct {

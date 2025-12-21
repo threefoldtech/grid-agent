@@ -372,23 +372,6 @@
     }
   }
 
-  function toggleSettings() {
-    showSettings = !showSettings;
-  }
-
-  function toggleDocs() {
-    showDocs = !showDocs;
-  }
-=======
-
-  function toggleSettings() {
-    showSettings = !showSettings;
-  }
-
-  function toggleDocs() {
-    showDocs = !showDocs;
-  }
-
   async function handleExport() {
     if (isExporting || $messagesStore.length === 0) return;
     isExporting = true;
@@ -430,7 +413,7 @@
           msg.steps.forEach((step, index) => {
             exportContent += `**${index + 1}. ${step.progressText}**\n\n`;
 
-            // Content based on exportPrefix
+            // Content based exportPrefix
             if (step.exportPrefix) {
               exportContent += `${step.exportPrefix} ${step.content}\n`;
             } else {
@@ -1008,32 +991,6 @@
       </div>
     </div>
   </div>
-<!-- Tool Approval Modal -->
-{#if pendingApproval}
-  <div class="modal-overlay" transition:fade>
-    <div class="modal approval-modal" on:click|stopPropagation transition:fade>
-      <div class="approval-icon">🔧</div>
-      <h2>Tool Approval Required</h2>
-      <p class="tool-name"><strong>{pendingApproval.toolName}</strong></p>
-      <div class="tool-args">
-        <pre>{pendingApproval.displayArgs}</pre>
-      </div>
-      <p class="approval-hint">Do you want to allow this tool to run?</p>
-      <div class="modal-actions">
-        <button class="btn danger" on:click={handleReject} disabled={isApproving}>
-          {isApproving ? "..." : "Reject"}
-        </button>
-        <button class="btn primary" on:click={handleApprove} disabled={isApproving}>
-          {isApproving ? "..." : "Approve"}
-        </button>
-      </div>
-    </div>
-  </div>
-{/if}
->>>>>>> origin/development-revert-messages
-
-<Settings show={showSettings} on:close={() => (showSettings = false)} />
-<Docs show={showDocs} on:close={() => (showDocs = false)} />
 {/if}
 
 <!-- Tool Approval Modal -->
@@ -1058,34 +1015,6 @@
     </div>
   </div>
 {/if}
-
-<Settings show={showSettings} on:close={() => (showSettings = false)} />
-<Docs show={showDocs} on:close={() => (showDocs = false)} />
-=======
-<!-- Tool Approval Modal -->
-{#if pendingApproval}
-  <div class="modal-overlay" transition:fade>
-    <div class="modal approval-modal" on:click|stopPropagation transition:fade>
-      <div class="approval-icon">🔧</div>
-      <h2>Tool Approval Required</h2>
-      <p class="tool-name"><strong>{pendingApproval.toolName}</strong></p>
-      <div class="tool-args">
-        <pre>{pendingApproval.displayArgs}</pre>
-      </div>
-      <p class="approval-hint">Do you want to allow this tool to run?</p>
-      <div class="modal-actions">
-        <button class="btn danger" on:click={handleReject} disabled={isApproving}>
-          {isApproving ? "..." : "Reject"}
-        </button>
-        <button class="btn primary" on:click={handleApprove} disabled={isApproving}>
-          {isApproving ? "..." : "Approve"}
-        </button>
-      </div>
-    </div>
-  </div>
-{/if}
-=======
->>>>>>> origin/development-revert-messages
 
 <Settings show={showSettings} on:close={() => (showSettings = false)} />
 <Docs show={showDocs} on:close={() => (showDocs = false)} />

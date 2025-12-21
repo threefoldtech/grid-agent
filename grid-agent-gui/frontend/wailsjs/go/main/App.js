@@ -90,17 +90,12 @@ export function SetTheme(arg1) {
   return window['go']['main']['App']['SetTheme'](arg1);
 }
 
-<<<<<<< HEAD
 export function ToggleToolOverride(arg1) {
   return window['go']['main']['App']['ToggleToolOverride'](arg1);
 }
 
-export function UpdateAdvancedSettings(arg1, arg2, arg3) {
-  return window['go']['main']['App']['UpdateAdvancedSettings'](arg1, arg2, arg3);
-=======
 export function UpdateAdvancedSettings(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['UpdateAdvancedSettings'](arg1, arg2, arg3, arg4);
->>>>>>> origin/development-ollama
 }
 
 export function UpdateGridSettings(arg1, arg2) {
