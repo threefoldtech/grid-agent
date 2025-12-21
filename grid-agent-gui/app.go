@@ -335,8 +335,6 @@ func (g *GUIMessageCollector) OnToolExecution(toolCallID, toolName, progressText
 		// Normalizing to lowercase just in case
 		risk := strings.ToLower(strings.TrimSpace(riskLevel))
 
-		log.Printf("[SmartGuard] Tool: %s, Raw Risk: '%s', Parsed: '%s', Threshold: %s", toolName, riskLevel, risk, g.app.settings.SmartSafetyThreshold)
-
 		isHigh := risk == "high"
 		isMedium := risk == "medium"
 		isLow := strings.ToLower(riskLevel) == "low"
