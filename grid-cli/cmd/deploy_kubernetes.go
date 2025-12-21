@@ -3,6 +3,7 @@ package cmd
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 
 	"github.com/rs/zerolog/log"
@@ -212,8 +213,7 @@ Examples:
 			if err != nil {
 				log.Fatal().Err(err).Send()
 			}
-
-			masterNode = uint32(nodes[0].NodeID)
+			masterNode = uint32(nodes[rand.Intn(len(nodes))].NodeID)
 		}
 		master.NodeID = masterNode
 		if len(workersNodes) < workersNumber {

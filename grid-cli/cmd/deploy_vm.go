@@ -4,6 +4,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"slices"
 	"strconv"
@@ -431,7 +432,7 @@ func executeVM(
 			return err
 		}
 
-		node = uint32(nodes[0].NodeID)
+		node = uint32(nodes[rand.Intn(len(nodes))].NodeID)
 	}
 
 	vm.NodeID = node
@@ -517,7 +518,7 @@ func executeVMLight(
 			return err
 		}
 
-		node = uint32(nodes[0].NodeID)
+		node = uint32(nodes[rand.Intn(len(nodes))].NodeID)
 	}
 
 	vm.NodeID = node

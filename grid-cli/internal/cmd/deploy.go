@@ -3,6 +3,7 @@ package cmd
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"net"
 	"slices"
@@ -14,6 +15,17 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
+
+// generateClusterToken generates a random 16-character alphanumeric token for K8s cluster authentication
+func generateClusterToken() string {
+	const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, 15)
+	rand.Read(b)
+	for i := range b {
+		b[i] = chars[int(b[i])%len(chars)]
+	}
+	return string(b)
+}
 
 // DeployVM deploys a VM with mounts
 func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, diskMounts []workloads.Disk, volumeMounts []workloads.Volume, projectName, existingNetworkName string) (workloads.VM, error) {
@@ -241,10 +253,9 @@ func DeployKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, mas
 	}
 
 	cluster := workloads.K8sCluster{
-		Master:  &master,
-		Workers: workers,
-		// TODO: should be randomized
-		Token:        "securetoken",
+		Master:       &master,
+		Workers:      workers,
+		Token:        generateClusterToken(),
 		SolutionType: projectName,
 		SSHKey:       sshKey,
 		Flist:        k8sFlist,

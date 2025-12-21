@@ -3,6 +3,7 @@ package cmd
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -155,7 +156,7 @@ Examples:
 				log.Fatal().Err(err).Send()
 			}
 
-			node = uint32(nodes[0].NodeID)
+			node = uint32(nodes[rand.Intn(len(nodes))].NodeID)
 		}
 
 		resZDBs, err := command.DeployZDBs(cmd.Context(), t, projectName, zdbs, count, node)
