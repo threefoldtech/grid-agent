@@ -34,10 +34,10 @@
   let showErrorModal = false;
   let showSettings = false;
   let showDocs = false;
+  let showClearModal = false;
   let errorMessage = "";
   let isExporting = false;
   let isAborting = false;
-  let showClearModal = false;
 
   // Tool approval state
   let pendingApproval: {
@@ -290,6 +290,96 @@
     await handleExport();
     messagesStore.set([]);
   }
+
+  function editMessage(index: number, newContent: string) {
+    // First update the message content and timestamp
+    messagesStore.update((msgs) => {
+      const newMsgs = [...msgs];
+      if (newMsgs[index] && newMsgs[index].role === "user") {
+        newMsgs[index] = { ...newMsgs[index], content: newContent, timestamp: new Date().toISOString() };
+      }
+      return newMsgs;
+    });
+
+    // If this user message has an agent response immediately following, retrigger AI
+    const messages = $messagesStore;
+    const nextIndex = index + 1;
+    if (messages[index].role === "user" && nextIndex < messages.length && messages[nextIndex].role === "agent") {
+      // Remove the agent response
+      messagesStore.update((msgs) => {
+        return msgs.filter((_, i) => i !== nextIndex);
+      });
+
+      // Add placeholder for new response
+      const requestID = `req_${Date.now()}_${Math.random()}`;
+      const placeholderMsg = {
+        role: "agent",
+        content: "",
+        timestamp: new Date().toISOString(),
+        requestID: requestID,
+        steps: [
+          {
+            progressText: "🤔 Processing your request...",
+            exportPrefix: "",
+            content: "Processing your request...",
+            output: "",
+            error: "",
+          },
+        ],
+      };
+      messagesStore.update((msgs) => [...msgs, placeholderMsg]);
+
+      // Send the edited message directly
+      (async () => {
+        isSending = true;
+        currentRequestID = requestID;
+        try {
+          const response = await SendMessage(newContent, requestID);
+          messagesStore.update((msgs) => {
+            const idx = msgs.findIndex((m) => m.requestID === response.requestID);
+            if (idx !== -1) {
+              const newMsgs = [...msgs];
+              newMsgs[idx] = response;
+              return newMsgs;
+            }
+            return [...msgs, response]; // Fallback
+          });
+        } catch (error) {
+          console.error("Failed to send message:", error);
+          messagesStore.update((msgs) => {
+            const idx = msgs.findIndex((m) => m.requestID === requestID);
+            if (idx !== -1) {
+              const existingMsg = msgs[idx];
+              const steps = (existingMsg.steps || []).filter(
+                (s) => !s.progressText?.includes("🤔 Processing"),
+              );
+              steps.push({
+                progressText: "❌ Error",
+                exportPrefix: "",
+                content: "",
+                output: "",
+                error: String(error),
+              });
+              msgs[idx] = { ...existingMsg, content: error, steps };
+            }
+            return [...msgs];
+          });
+        } finally {
+          isSending = false;
+          currentRequestID = "";
+        }
+      })();
+    }
+  }
+
+  function toggleSettings() {
+    showSettings = !showSettings;
+  }
+
+  function toggleDocs() {
+    showDocs = !showDocs;
+  }
+=======
 
   function toggleSettings() {
     showSettings = !showSettings;
@@ -808,8 +898,8 @@
       </div>
     {/if}
 
-    {#each $messagesStore as msg}
-      <ChatMessage message={msg} />
+    {#each $messagesStore as msg, index}
+      <ChatMessage message={msg} on:edit={(e) => editMessage(index, e.detail.content)} />
     {/each}
   </div>
 
@@ -918,7 +1008,59 @@
       </div>
     </div>
   </div>
+<!-- Tool Approval Modal -->
+{#if pendingApproval}
+  <div class="modal-overlay" transition:fade>
+    <div class="modal approval-modal" on:click|stopPropagation transition:fade>
+      <div class="approval-icon">🔧</div>
+      <h2>Tool Approval Required</h2>
+      <p class="tool-name"><strong>{pendingApproval.toolName}</strong></p>
+      <div class="tool-args">
+        <pre>{pendingApproval.displayArgs}</pre>
+      </div>
+      <p class="approval-hint">Do you want to allow this tool to run?</p>
+      <div class="modal-actions">
+        <button class="btn danger" on:click={handleReject} disabled={isApproving}>
+          {isApproving ? "..." : "Reject"}
+        </button>
+        <button class="btn primary" on:click={handleApprove} disabled={isApproving}>
+          {isApproving ? "..." : "Approve"}
+        </button>
+      </div>
+    </div>
+  </div>
 {/if}
+>>>>>>> origin/development-revert-messages
+
+<Settings show={showSettings} on:close={() => (showSettings = false)} />
+<Docs show={showDocs} on:close={() => (showDocs = false)} />
+{/if}
+
+<!-- Tool Approval Modal -->
+{#if pendingApproval}
+  <div class="modal-overlay" transition:fade>
+    <div class="modal approval-modal" on:click|stopPropagation transition:fade>
+      <div class="approval-icon">🔧</div>
+      <h2>Tool Approval Required</h2>
+      <p class="tool-name"><strong>{pendingApproval.toolName}</strong></p>
+      <div class="tool-args">
+        <pre>{pendingApproval.displayArgs}</pre>
+      </div>
+      <p class="approval-hint">Do you want to allow this tool to run?</p>
+      <div class="modal-actions">
+        <button class="btn danger" on:click={handleReject} disabled={isApproving}>
+          {isApproving ? "..." : "Reject"}
+        </button>
+        <button class="btn primary" on:click={handleApprove} disabled={isApproving}>
+          {isApproving ? "..." : "Approve"}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<Settings show={showSettings} on:close={() => (showSettings = false)} />
+<Docs show={showDocs} on:close={() => (showDocs = false)} />
 =======
 <!-- Tool Approval Modal -->
 {#if pendingApproval}
@@ -942,6 +1084,8 @@
     </div>
   </div>
 {/if}
+=======
+>>>>>>> origin/development-revert-messages
 
 <Settings show={showSettings} on:close={() => (showSettings = false)} />
 <Docs show={showDocs} on:close={() => (showDocs = false)} />

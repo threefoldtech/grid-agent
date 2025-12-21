@@ -6,6 +6,8 @@
   import { marked } from "marked";
   import DOMPurify from "dompurify";
   import { BrowserOpenURL } from "../../wailsjs/runtime/runtime.js";
+  import { createEventDispatcher } from "svelte";
+  const dispatch = createEventDispatcher();
 
   // Step types
   const STEP_TYPE_TOOL = "tool";
@@ -31,6 +33,9 @@
     output?: string;
     error?: string;
   };
+
+  let isEditing = false;
+  let editContent = message.content;
 
   const isUser = message.role === "user";
   let showSteps = false;
@@ -104,6 +109,34 @@
       BrowserOpenURL(link.href);
     }
   }
+
+  function startEditing() {
+    if (isUser) {
+      isEditing = true;
+      editContent = message.content;
+    }
+  }
+
+  function saveEdit() {
+    if (isUser && editContent.trim()) {
+      dispatch('edit', { content: editContent.trim() });
+      isEditing = false;
+    }
+  }
+
+  function cancelEdit() {
+    isEditing = false;
+    editContent = message.content;
+  }
+
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      saveEdit();
+    } else if (event.key === 'Escape') {
+      cancelEdit();
+    }
+  }
 </script>
 
 <div class="message-wrapper {isUser ? 'user' : 'agent'}" in:fade>
@@ -118,9 +151,44 @@
   <div class="content-wrapper">
     <div class="bubble">
       {#if message.content}
-        <div class="text markdown-body" on:click={handleLinkClick}>
-          {@html renderMarkdown(message.content)}
-        </div>
+        {#if isEditing}
+          <div class="edit-container">
+            <textarea
+              bind:value={editContent}
+              on:keydown={handleKeydown}
+              class="edit-textarea"
+              rows="3"
+              placeholder="Edit your message..."
+            ></textarea>
+            <div class="edit-actions">
+              <button class="edit-btn save-btn" on:click={saveEdit}>Save</button>
+              <button class="edit-btn cancel-btn" on:click={cancelEdit}>Cancel</button>
+            </div>
+          </div>
+        {:else}
+          <div class="message-content">
+            <div class="text markdown-body" on:click={handleLinkClick}>
+              {@html renderMarkdown(message.content)}
+            </div>
+            {#if isUser}
+              <button class="edit-trigger" on:click={startEditing} title="Edit message">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </button>
+            {/if}
+          </div>
+        {/if}
       {:else if message.steps && message.steps.length > 0}
         <div class="typing-indicator">
           <span></span>
@@ -542,5 +610,114 @@
   .markdown-body :global(strong) {
     font-weight: 700;
     color: inherit; /* inherit ensures it looks good in user bubbles too */
+  }
+
+  /* Edit functionality styling */
+  .message-content {
+    position: relative;
+  }
+
+  .edit-trigger {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 0.5rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+    color: var(--text-secondary);
+  }
+
+  .message-content:hover .edit-trigger {
+    opacity: 1;
+    pointer-events: auto;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
+
+  .edit-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .edit-textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.95rem;
+    resize: vertical;
+    min-height: 3rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .edit-textarea:focus {
+    border-color: var(--accent);
+  }
+
+  .user .edit-textarea {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
+
+  .agent .edit-textarea {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+  }
+
+  .edit-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+  }
+
+  .edit-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+  }
+
+  .save-btn {
+    background: var(--accent);
+    color: white;
+  }
+
+  .save-btn:hover {
+    background: var(--accent-hover);
+  }
+
+  .cancel-btn {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+
+  .cancel-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
+
+  .user .cancel-btn {
+    color: rgba(255, 255, 255, 0.8);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .user .cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
   }
 </style>
