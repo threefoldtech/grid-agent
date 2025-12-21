@@ -281,7 +281,6 @@ Use this format when required information is missing:
 ```json
 {
   "question": "Which directory would you like to explore?",
-  "explanation": "I need this information to proceed"
 }
 ```
 
@@ -292,7 +291,6 @@ Use this format for the final response to the user:
 ```json
 {
   "answer": "Here are the files in your directory: file1.txt, file2.go, README.md",
-  "explanation": "Showing directory contents"
 }
 ```
 
