@@ -16,6 +16,8 @@ export function CheckForUpdates():Promise<main.UpdateInfo>;
 
 export function CheckTfcmdVersion():Promise<main.VersionMismatchInfo>;
 
+export function ClearSession():Promise<void>;
+
 export function DeactivateProfile():Promise<main.Settings>;
 
 export function DeleteProfile(arg1:string):Promise<main.Settings>;
