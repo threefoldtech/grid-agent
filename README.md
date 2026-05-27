@@ -504,5 +504,5 @@ Copyright (c) TF-Tech NV.
 
 ## Related Projects
 
-- [tfgrid-sdk-go](https://github.com/threefoldtech/tfgrid-sdk-go) — Grid SDK for Go
+- [zos_sdk_go](https://github.com/threefoldtech/tfgrid-sdk-go) — Grid SDK for Go
 - [Grid Proxy](https://github.com/threefoldtech/tfgrid-sdk-go/tree/development/grid-proxy) — Grid indexer and query service
