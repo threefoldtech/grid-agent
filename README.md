@@ -1,31 +1,39 @@
 # Grid Agent
 
-AI-powered agent framework and tools for interacting with the ThreeFold Grid through natural language.
+An AI-powered agent framework and command-line tool suite for managing decentralized infrastructure deployments through natural language.
 
-<div align="center">
-  <img src="grid-agent-gui/build/appicon.png" alt="ThreeFold Grid Agent" width="400px">
-</div>
+## What this is
 
-[![Go Version](https://img.shields.io/badge/Go-1.23+-00ADD8?style=flat&logo=go)](https://go.dev/)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+Grid Agent provides a complete set of tools for intelligent automation and management of grid infrastructure. It includes a reusable AI agent core with LLM provider abstraction, a modern desktop application, and a command-line interface for infrastructure operations.
 
-## Overview
+The agent interprets natural language requests, translates them into structured operations, and executes them against a grid backend. This makes it possible to deploy virtual machines, Kubernetes clusters, databases, and gateways using conversational commands rather than manual API calls.
 
-The **Grid Agent** repository provides a complete suite of tools for intelligent automation and management of ThreeFold Grid infrastructure:
+## What this repository contains
 
-- **🤖 Agent Framework** - Reusable AI agent core with LLM provider abstraction
-- **🖥️ Grid Agent GUI** - Modern desktop application built with Wails
-- **⚡ Grid CLI (tfcmd)** - Command-line interface for Grid operations
+- **Agent Framework** (`/agent`) — Reusable AI agent core with LLM provider abstraction and extensible tool system
+- **Grid Agent GUI** (`/grid-agent-gui`) — Cross-platform desktop application built with Wails and Svelte
+- **Grid CLI** (`/grid-cli`, `tfcmd`) — Command-line interface for grid operations and schema export
+
+## Role in the stack
+
+Grid Agent sits at the user-facing layer of the infrastructure stack. It communicates with the grid's management plane to execute workloads, report status, and handle lifecycle operations. The CLI provides the foundational operations that the agent framework orchestrates, while the GUI offers a chat-based interface for non-technical users.
+
+## Relation to ThreeFold
+
+This technology is used within the ThreeFold ecosystem and was first deployed on the ThreeFold Grid. The component itself is designed as reusable infrastructure technology and should be understood by its technical function first, independent of any specific deployment.
+
+## Ownership
+
+This repository is owned and maintained by TF-Tech NV, a Belgian company responsible for the development and maintenance of this technology.
 
 ## Components
 
-### 1. 📦 Agent (`/agent`)
+### 1. Agent (`/agent`)
 
 A standalone, reusable AI agent framework for building intelligent conversational assistants.
 
-**Key Features:**
-
-- LLM provider abstraction (Google Gemini, extensible to OpenAI, etc.)
+**Key features:**
+- LLM provider abstraction (Google Gemini, extensible to OpenAI and others)
 - Extensible tool system for CLI integration
 - Real-time streaming command execution
 - Automatic retry logic and error handling
@@ -33,42 +41,40 @@ A standalone, reusable AI agent framework for building intelligent conversationa
 
 **Package:** `github.com/threefoldtech/grid-agent/agent`
 
-[📖 Read the full Agent documentation →](./agent/README.md)
+[Read the full Agent documentation →](./agent/README.md)
 
 ---
 
-### 2. 🖥️ Grid Agent GUI (`/grid-agent-gui`)
+### 2. Grid Agent GUI (`/grid-agent-gui`)
 
-A modern, cross-platform desktop application providing a chat interface to interact with the ThreeFold Grid using natural language.
+A modern, cross-platform desktop application providing a chat interface for grid management.
 
-**Key Features:**
-
+**Key features:**
 - AI-powered chat interface with Google Gemini
-- Beautiful dark/light theme support
+- Dark and light theme support
 - Secure onboarding flow
 - Real-time command execution with streaming output
 - Multi-network support (mainnet, testnet, devnet)
 
 **Technologies:** Wails v2, Svelte, TypeScript, Go
 
-[📖 Read the full GUI documentation →](./grid-agent-gui/README.md)
+[Read the full GUI documentation →](./grid-agent-gui/README.md)
 
 ---
 
-### 3. ⚡ Grid CLI (`/grid-cli`)
+### 3. Grid CLI (`/grid-cli`)
 
-Command-line interface for ThreeFold Grid operations, providing the foundation for agent schema generation.
+Command-line interface for grid operations, providing the foundation for agent schema generation.
 
-**Key Features:**
-
-- Deploy and manage VMs, Kubernetes clusters, databases
+**Key features:**
+- Deploy and manage VMs, Kubernetes clusters, and databases
 - Gateway management (FQDN, Name)
 - Contract operations
 - Schema export for AI agent integration
 
 **Package:** `github.com/threefoldtech/grid-agent/grid-cli`
 
-[📖 Read the full CLI documentation →](./grid-cli/README.md)
+[Read the full CLI documentation →](./grid-cli/README.md)
 
 ---
 
@@ -112,13 +118,13 @@ Prebuilt binaries for the latest tagged version are available on GitHub Releases
     sudo mv tfcmd-darwin-arm64 /usr/local/bin/tfcmd   # Apple Silicon (arm64)
     ```
 
-3. For the GUI, download the `.app.zip` for your architecture and extract it (Finder: double-click, or `unzip` from the terminal). This will produce `grid-agent-gui.app`.
+3. For the GUI, download the `.app.zip` for your architecture and extract it. This produces `grid-agent-gui.app`.
 
     ```bash
-    mv grid-agent-gui.app /Applications/ThreeFold\ Grid\ Agent.app
+    mv grid-agent-gui.app /Applications/Grid\ Agent.app
     ```
 
-4. Launch from Spotlight or Finder. If macOS blocks it as an "unidentified developer" or "App is damaged and can't be opened", allow it under **System Settings → Privacy & Security**.
+4. Launch from Spotlight or Finder. If macOS blocks it as an unidentified developer, allow it under **System Settings → Privacy & Security**.
 
 #### Windows
 
@@ -159,7 +165,7 @@ make install-grid-cli
 make install-grid-agent-gui
 ```
 
-This will install binaries to:
+This installs binaries to:
 
 - **Linux:** `~/.local/bin`
 - **macOS:** `/usr/local/bin`
@@ -175,10 +181,9 @@ After installation, launch the Grid Agent GUI:
 grid-agent-gui
 
 # Or use your application launcher
-# Search for "ThreeFold Grid Agent" in your app menu
 ```
 
-On first launch, you'll be guided through:
+On first launch, you will be guided through:
 
 1. Entering your mnemonic phrase
 2. Selecting a network (mainnet/testnet/devnet)
@@ -316,7 +321,7 @@ This starts:
             └───────────────────────────┘
                           │
             ┌─────────────▼─────────────┐
-            │   ThreeFold Grid          │
+            │   Grid Backend            │
             │   (Blockchain + Nodes)    │
             └───────────────────────────┘
 ```
@@ -335,7 +340,7 @@ grid-agent/
 │   │   └── workflow/      # Workflow processing
 │   └── go.mod
 │
-├── grid-cli/              # ThreeFold Grid CLI
+├── grid-cli/              # Grid CLI
 │   ├── cmd/               # CLI commands
 │   ├── internal/          # Internal packages
 │   ├── docs/              # Command documentation
@@ -416,27 +421,16 @@ Configuration is stored in `.tfgridconfig` in your system's config directory.
 
 ## Contributing
 
-We welcome contributions! Please follow these guidelines:
+We welcome contributions. Please follow these guidelines:
 
-### Getting Started
-
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Make your changes**
-4. **Run tests**: `make test`
-5. **Run linter**: `make lint`
-6. **Commit changes**: `git commit -m 'Add amazing feature'`
-7. **Push to branch**: `git push origin feature/amazing-feature`
-8. **Open a Pull Request**
-
-### Code Standards
-
-- Follow Go best practices and conventions
-- Add tests for new features
-- Update documentation for API changes
-- Ensure all tests pass
-- Run `make lint` before committing
-- Use meaningful commit messages
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Make your changes
+4. Run tests: `make test`
+5. Run linter: `make lint`
+6. Commit changes: `git commit -m 'Add amazing feature'`
+7. Push to branch: `git push origin feature/amazing-feature`
+8. Open a Pull Request
 
 ### Development Workflow
 
@@ -503,34 +497,12 @@ make tidy
 
 ## License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-Copyright (c) TFTech NV.
-
----
-
-## Support
-
-For issues and questions:
-
-- **GitHub Issues:** [github.com/threefoldtech/grid-agent/issues](https://github.com/threefoldtech/grid-agent/issues)
-- **ThreeFold Forum:** [forum.threefold.io](https://forum.threefold.io/)
-- **Documentation:** [manual.grid.tf](https://manual.grid.tf)
-
----
-
-## Credits
-
-- **Author:** Sameh Abouel-saad
-- **Framework:** [Wails](https://wails.io/)
-- **AI Provider:** [Google Gemini](https://ai.google.dev/)
-- **ThreeFold:** [threefold.io](https://threefold.io/)
+This project is licensed under the Apache License 2.0 — see the [LICENSE](LICENSE) file for details.
+Copyright (c) TF-Tech NV.
 
 ---
 
 ## Related Projects
 
-- [tfgrid-sdk-go](https://github.com/threefoldtech/tfgrid-sdk-go) - ThreeFold Grid SDK for Go (original monorepo)
-- [ThreeFold Grid Proxy](https://github.com/threefoldtech/tfgrid-sdk-go/tree/development/grid-proxy) - Grid indexer and query service
-- [ThreeFold Manual](https://manual.grid.tf) - Comprehensive Grid documentation
-
-<parameter name="Complexity">7
+- [tfgrid-sdk-go](https://github.com/threefoldtech/tfgrid-sdk-go) — Grid SDK for Go
+- [Grid Proxy](https://github.com/threefoldtech/tfgrid-sdk-go/tree/development/grid-proxy) — Grid indexer and query service
