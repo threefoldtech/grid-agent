@@ -39,7 +39,7 @@ A standalone, reusable AI agent framework for building intelligent conversationa
 - Automatic retry logic and error handling
 - Structured JSON response parsing
 
-**Package:** `github.com/threefoldtech/grid-agent/agent`
+**Package:** `github.com/threefoldtech/grid_agent/agent`
 
 [Read the full Agent documentation →](./agent/README.md)
 
@@ -72,7 +72,7 @@ Command-line interface for grid operations, providing the foundation for agent s
 - Contract operations
 - Schema export for AI agent integration
 
-**Package:** `github.com/threefoldtech/grid-agent/grid-cli`
+**Package:** `github.com/threefoldtech/grid_agent/grid-cli`
 
 [Read the full CLI documentation →](./grid-cli/README.md)
 
@@ -89,7 +89,7 @@ You have two options to start using Grid Agent:
 
 Prebuilt binaries for the latest tagged version are available on GitHub Releases:
 
-- <https://github.com/threefoldtech/grid-agent/releases/latest>
+- <https://github.com/threefoldtech/grid_agent/releases/latest>
 
 #### Linux
 
@@ -201,7 +201,7 @@ This repository uses Go workspaces to manage multiple modules.
 
 ```bash
 # Clone the repository
-git clone https://github.com/threefoldtech/grid-agent.git
+git clone https://github.com/threefoldtech/grid_agent.git
 cd grid-agent
 
 # Check dependencies
@@ -502,5 +502,5 @@ This project is licensed under the Apache License 2.0 — see the [LICENSE](LICE
 
 ## Related Projects
 
-- [zos_sdk_go](https://github.com/threefoldtech/tfgrid-sdk-go) — Grid SDK for Go
-- [Grid Proxy](https://github.com/threefoldtech/tfgrid-sdk-go/tree/development/grid-proxy) — Grid indexer and query service
+- [zos_sdk_go](https://github.com/threefoldtech/zos_sdk_go) — Grid SDK for Go
+- [Grid Proxy](https://github.com/threefoldtech/zos_sdk_go/tree/development/grid-proxy) — Grid indexer and query service
