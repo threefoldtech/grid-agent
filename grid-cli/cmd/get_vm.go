@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	command "github.com/threefoldtech/grid-agent/grid-cli/internal/cmd"
 	"github.com/threefoldtech/grid-agent/grid-cli/internal/config"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/deployer"
 )
 
 // getVMCmd represents the get vm command
