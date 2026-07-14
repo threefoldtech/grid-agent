@@ -88,7 +88,7 @@ tfcmd
 
 ## Download
 
-- Download the binaries from [releases](https://github.com/threefoldtech/tfgrid-sdk-go/releases)
+- Download the binaries from [releases](https://github.com/threefoldtech/grid_agent/releases)
 - Extract the downloaded files
 - Move the binary to any of `$PATH` directories, for example:
 

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/deployer"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
 )
 
 // checkIfExistAndAppend checks if a contract exists in CurrentNodeDeployments and adds it if not

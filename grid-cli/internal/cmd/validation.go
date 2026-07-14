@@ -4,8 +4,8 @@ package cmd
 import (
 	"strings"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/deployer"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
 )
 
 // DeploymentExists checks if a deployment with the given name already exists in the project

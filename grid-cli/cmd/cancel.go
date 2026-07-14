@@ -10,8 +10,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/grid-agent/grid-cli/internal/config"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/deployer"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
 )
 
 // cancelCmd represents the cancel command

@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/grid-agent/grid-cli/internal/config"
 	"github.com/threefoldtech/grid-agent/grid-cli/internal/filters"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/deployer"
+	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 )
 
 // listGatewaysNameCmd represents the list gateways name command
