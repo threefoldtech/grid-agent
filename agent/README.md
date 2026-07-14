@@ -68,7 +68,7 @@ Workflow processing and response handling.
 ## Installation
 
 ```bash
-go get github.com/threefoldtech/tfgrid-sdk-go/agent
+go get github.com/threefoldtech/grid-agent/agent
 ```
 
 ## Quick Start
@@ -82,9 +82,9 @@ import (
     "context"
     "log"
     
-    "github.com/threefoldtech/tfgrid-sdk-go/agent/pkg/core"
-    "github.com/threefoldtech/tfgrid-sdk-go/agent/pkg/llm"
-    "github.com/threefoldtech/tfgrid-sdk-go/agent/pkg/tools/builtin"
+    "github.com/threefoldtech/grid-agent/agent/pkg/core"
+    "github.com/threefoldtech/grid-agent/agent/pkg/llm"
+    "github.com/threefoldtech/grid-agent/agent/pkg/tools/builtin"
 )
 
 func main() {
@@ -159,7 +159,7 @@ agent.RegisterTool(builtin.NewCommandToolWithStreaming(streamCallback))
 
 ```go
 import (
-    "github.com/threefoldtech/tfgrid-sdk-go/agent/pkg/workflow"
+    "github.com/threefoldtech/grid-agent/agent/pkg/workflow"
 )
 
 // Create a response handler
@@ -225,7 +225,7 @@ import (
     "context"
     "fmt"
     
-    "github.com/threefoldtech/tfgrid-sdk-go/agent/pkg/tools"
+    "github.com/threefoldtech/grid-agent/agent/pkg/tools"
 )
 
 type MyCustomTool struct{}
@@ -393,6 +393,6 @@ For issues and questions:
 
 ## Related Projects
 
-- [tfgrid-sdk-go](https://github.com/threefoldtech/tfgrid-sdk-go) - ThreeFold Grid SDK for Go
+- [zos_sdk_go](https://github.com/threefoldtech/zos_sdk_go) - ThreeFold Grid SDK for Go
 - [grid-cli](../grid-cli/) - ThreeFold Grid CLI tool
 - [grid-agent-gui](../grid-agent-gui/) - Desktop GUI for the Grid Agent

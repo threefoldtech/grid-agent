@@ -260,12 +260,12 @@ Contributions are welcome! Please ensure:
 
 ## License
 
-This project is part of the [tfgrid-sdk-go](https://github.com/threefoldtech/tfgrid-sdk-go) repository.
+This project is part of the [grid_agent](https://github.com/threefoldtech/grid_agent) repository.
 
 ## Support
 
 For issues and questions:
-- GitHub Issues: https://github.com/threefoldtech/tfgrid-sdk-go/issues
+- GitHub Issues: https://github.com/threefoldtech/grid_agent/issues
 - ThreeFold Forum: https://forum.threefold.io/
 
 ## Credits

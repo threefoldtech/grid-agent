@@ -47,7 +47,7 @@ Check if you have the latest version:
 ```bash
 # Compare your version with latest releases
 tfcmd version
-# Check: https://github.com/threefoldtech/tfgrid-sdk-go/releases
+# Check: https://github.com/threefoldtech/grid_agent/releases
 ```
 
 ### Troubleshooting
@@ -79,7 +79,7 @@ To update to the latest version:
 
 2. **Download latest release**:
    ```bash
-   # Visit: https://github.com/threefoldtech/tfgrid-sdk-go/releases
+   # Visit: https://github.com/threefoldtech/grid_agent/releases
    # Download the latest binary for your platform
    ```
 
@@ -104,8 +104,8 @@ If you build from source, version information is automatically included:
 
 ```bash
 # Clone repository
-git clone https://github.com/threefoldtech/tfgrid-sdk-go.git
-cd tfgrid-sdk-go/grid-cli
+git clone https://github.com/threefoldtech/grid_agent.git
+cd grid_agent/grid-cli
 
 # Build
 make build
@@ -185,7 +185,7 @@ Version information corresponds to official releases:
 - **Pre-releases**: Alpha/beta testing versions
 - **Development builds**: Latest features (may be unstable)
 
-Check the [GitHub releases](https://github.com/threefoldtech/tfgrid-sdk-go/releases) for:
+Check the [GitHub releases](https://github.com/threefoldtech/grid_agent/releases) for:
 - Release notes
 - Breaking changes
 - New features
