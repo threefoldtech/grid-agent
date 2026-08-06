@@ -20,15 +20,13 @@ Use this format when you need to execute a tool (action/function):
 ### Question Format
 Use this format when you lack required information to proceed:
 {
-  "question": "The specific information or data that is missing?",
-  "explanation": "Why this information is required to complete the user's request."
+  "question": "The specific information or data that is missing? Include context and reasoning for why this is needed."
 }
 
 ### Final Answer Format
 Use this format for your complete, final response to the user:
 {
-  "answer": "Your complete, formatted response to the user here.",
-  "explanation": "Relevant context, reasoning, or command results supporting the answer."
+  "answer": "Your complete response. Include any necessary context, reasoning, or command results directly here."
 }
 
 
