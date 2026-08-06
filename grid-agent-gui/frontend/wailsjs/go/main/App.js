@@ -30,6 +30,10 @@ export function CheckTfcmdVersion() {
   return window['go']['main']['App']['CheckTfcmdVersion']();
 }
 
+export function ClearSession() {
+  return window['go']['main']['App']['ClearSession']();
+}
+
 export function DeactivateProfile() {
   return window['go']['main']['App']['DeactivateProfile']();
 }

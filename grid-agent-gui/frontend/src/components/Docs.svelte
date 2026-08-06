@@ -191,6 +191,15 @@
             <li>Version information and active persona</li>
             <li>Optional AI-generated summary (if enabled)</li>
           </ul>
+
+          <h5>Starting a New Conversation</h5>
+          <p>The new conversation button (➕) allows you to reset the current session. Before starting a new conversation, you'll be prompted with options:</p>
+          <ul>
+            <li><strong>Save and Start New:</strong> Export the current conversation first, then start a new one</li>
+            <li><strong>Start New:</strong> Immediately start a new conversation and clear usage history</li>
+            <li><strong>Cancel:</strong> Keep the current conversation</li>
+          </ul>
+          <p><strong>Note:</strong> Previous session history cannot be recovered once cleared, so consider saving important discussions first.</p>
         </div>
 
         <!-- Grid Operations -->

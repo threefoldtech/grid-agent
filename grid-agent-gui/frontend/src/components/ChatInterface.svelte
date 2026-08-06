@@ -8,6 +8,7 @@
     CheckTfcmdVersion,
     ApproveToolExecution,
     RejectToolExecution,
+    ClearSession,
   } from "../../wailsjs/go/main/App.js";
   import { EventsOn, BrowserOpenURL } from "../../wailsjs/runtime/runtime.js";
   import {
@@ -34,6 +35,7 @@
   let showErrorModal = false;
   let showSettings = false;
   let showDocs = false;
+  let showClearModal = false;
   let errorMessage = "";
   let isExporting = false;
   let isAborting = false;
@@ -273,6 +275,31 @@
   function closeErrorModal() {
     showErrorModal = false;
     errorMessage = "";
+  }
+
+  function handleNewConversation() {
+    showClearModal = true;
+  }
+
+  async function startNewConversation() {
+    showClearModal = false;
+    try {
+      await ClearSession();
+    } catch (err) {
+      console.error("Failed to clear session:", err);
+    }
+    messagesStore.set([]);
+  }
+
+  async function saveAndStartNew() {
+    showClearModal = false;
+    await handleExport();
+    try {
+      await ClearSession();
+    } catch (err) {
+      console.error("Failed to clear session:", err);
+    }
+    messagesStore.set([]);
   }
 
   function toggleSettings() {
@@ -645,7 +672,7 @@
         class="icon-btn"
         on:click={handleExport}
         title="Export Conversation"
-        disabled={isExporting}
+        disabled={isExporting || $messagesStore.length === 0}
       >
         {#if isExporting}
           <svg
@@ -676,6 +703,27 @@
             /><line x1="12" x2="12" y1="15" y2="3" /></svg
           >
         {/if}
+      </button>
+      <button
+        class="icon-btn clear-btn"
+        on:click={handleNewConversation}
+        title="Start New Conversation"
+        disabled={$messagesStore.length === 0}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          ><rect width="18" height="18" x="3" y="3" rx="2" /><path
+            d="M8 12h8"
+          /><path d="M12 8v8" /></svg
+        >
       </button>
       <button class="icon-btn" on:click={toggleDocs} title="Help">
         <svg
@@ -893,6 +941,21 @@
   </div>
 {/if}
 
+<!-- New Conversation Modal -->
+{#if showClearModal}
+  <div class="modal-overlay" on:click={() => showClearModal = false} transition:fade>
+    <div class="modal" on:click|stopPropagation transition:fade>
+      <h2>Start New Conversation</h2>
+      <p>Starting a new conversation will clear the current session history.</p>
+      <div class="modal-actions">
+        <button class="btn primary" on:click={saveAndStartNew}>Save and Start New</button>
+        <button class="btn danger" on:click={startNewConversation}>Start New</button>
+        <button class="btn secondary" on:click={() => showClearModal = false}>Cancel</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
 <Settings show={showSettings} on:close={() => (showSettings = false)} />
 <Docs show={showDocs} on:close={() => (showDocs = false)} />
 
@@ -1054,6 +1117,15 @@
   }
 
   .logout-btn:hover {
+    color: var(--error);
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  .clear-btn {
+    color: var(--text-secondary);
+  }
+
+  .clear-btn:hover {
     color: var(--error);
     background: rgba(239, 68, 68, 0.1);
   }

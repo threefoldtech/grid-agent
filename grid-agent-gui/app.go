@@ -268,6 +268,13 @@ func (a *App) SaveSettings(mnemonics, network, apiKey string) error {
 	return nil
 }
 
+// ClearSession clears the current agent session/history
+func (a *App) ClearSession() error {
+	return a.initializeAgent(AgentInitOptions{
+		ClearHistory: true,
+	})
+}
+
 // Logout clears settings and returns to onboarding
 func (a *App) Logout() error {
 	// Keep theme and profiles
